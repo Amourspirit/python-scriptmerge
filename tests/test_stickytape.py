@@ -1,6 +1,7 @@
 import os
 import os.path
 import sys
+import pytest
 
 
 def test_single_file_script_still_works(chk_script_output):
@@ -91,9 +92,9 @@ def test_module_import_is_detected_when_import_is_renamed(chk_script_output):
 
 
 def test_can_explicitly_set_python_interpreter(
-    chk_script_output, run_shell_cmd, find_site_packages, venv_python_binary_path, find_script, tmp_dir_fn
+    chk_script_output, run_shell_cmd, find_site_packages, venv_python_binary_path, find_script, tmp_path
 ):
-    venv_path = os.path.join(tmp_dir_fn, "venv")
+    venv_path = os.path.join(tmp_path, "venv")
     # _shell.run(["virtualenv", venv_path])
     run_shell_cmd(["virtualenv", venv_path])
     site_packages_path = find_site_packages(venv_path)
@@ -109,9 +110,9 @@ def test_can_explicitly_set_python_interpreter(
 
 
 def test_python_environment_variables_are_ignored_when_explicitly_setting_python_interpreter(
-    chk_script_output, run_shell_cmd, find_site_packages, find_script, venv_python_binary_path, tmp_dir_fn
+    chk_script_output, run_shell_cmd, find_site_packages, find_script, venv_python_binary_path, tmp_path
 ):
-    venv_path = os.path.join(tmp_dir_fn, "venv")
+    venv_path = os.path.join(tmp_path, "venv")
     run_shell_cmd(["virtualenv", venv_path])
     site_packages_path = find_site_packages(venv_path)
     path_path = os.path.join(site_packages_path, "greetings.pth")
@@ -141,6 +142,7 @@ def test_python_environment_variables_are_ignored_when_explicitly_setting_python
             os.environ["PYTHONPATH"] = original_python_path
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Windows python does not support shebang")
 def test_can_explicitly_copy_shebang(chk_script_output):
     chk_script_output(
         script_path="script_with_special_shebang/hello",

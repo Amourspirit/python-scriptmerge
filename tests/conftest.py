@@ -1,5 +1,6 @@
 import pytest
 import os
+import sys
 import platform
 import shutil
 import tempfile
@@ -8,43 +9,51 @@ import contextlib
 import re
 import stat
 
+
 import stickytape
 from test_scripts import root as test_script_root
 
 
-@contextlib.contextmanager
-def temporary_directory():
-    dir_path = tempfile.mkdtemp()
-    try:
-        yield dir_path
-    finally:
-        shutil.rmtree(dir_path)
+@pytest.fixture(scope="session")
+def temporary_script(tmp_path_factory: pytest.TempPathFactory):
+    fn = tmp_path_factory.mktemp("script_dir") / "script"
 
-
-@contextlib.contextmanager
-def temporary_script(contents):
-    with temporary_directory() as dir_path:
-        path = os.path.join(dir_path, "script")
-        with open(path, "w") as script_file:
+    def _temporary_script(contents):
+        with open(fn, "w") as script_file:
             script_file.write(contents)
 
-        st = os.stat(path)
-        os.chmod(path, st.st_mode | stat.S_IEXEC)
-        yield path
+        st = os.stat(fn)
+        fn.chmod(st.st_mode | stat.S_IEXEC)
+        return fn
+
+    return _temporary_script
 
 
-@pytest.fixture(scope="function")
-def tmp_dir_fn():
-    result = tempfile.mkdtemp()
-    yield result
-    if os.path.exists(result):
-        shutil.rmtree(result, ignore_errors=True)
+@pytest.fixture
+def capture_stdout(monkeypatch) -> dict:
+    buffer = {"stdout": "", "write_calls": 0}
+
+    def fake_write(s):
+        buffer["stdout"] += s
+        buffer["write_calls"] += 1
+
+    monkeypatch.setattr(sys.stdout, "write", fake_write)
+    return buffer
 
 
 @pytest.fixture(scope="session")
 def run_shell_cmd() -> bytes:
     def run_shell(cmd) -> str:
         # run shell command
+        # myenv = os.environ.copy()
+        # pypath = ''
+        # p_sep = ':' if is_windows else ';'
+        # for d in sys.path:
+        #     pypath = pypath + d + p_sep
+        # myenv['PYTHONPATH'] = pypath
+        # result = subprocess.run(cmd, env=myenv, stdout=subprocess.PIPE)
+        # result = subprocess.run(cmd, env=myenv, capture_output=True, shell=True)
+        # return result.stdout
         result = subprocess.check_output(cmd)
         return result
 
@@ -52,7 +61,7 @@ def run_shell_cmd() -> bytes:
 
 
 @pytest.fixture(scope="session")
-def chk_script_output(find_script, run_shell_cmd, is_windows):
+def chk_script_output(find_script, run_shell_cmd, is_windows, temporary_script):
     def script_output(script_path, expected_output, expected_modules=None, **kwargs):
         result = stickytape.script(find_script(script_path), **kwargs)
 
@@ -60,17 +69,18 @@ def chk_script_output(find_script, run_shell_cmd, is_windows):
             actual_modules = set(re.findall(r"__stickytape_write_module\('([^']*)\.py'", result))
             assert set(expected_modules) == actual_modules
 
-        with temporary_script(result) as script_file_path:
-            try:
-                if is_windows:
-                    command = ["py", script_file_path]
-                else:
-                    command = [script_file_path]
-                output = run_shell_cmd(command).replace(b"\r\n", b"\n")
-            except:
-                for index, line in enumerate(result.splitlines()):
-                    print((index + 1), line)
-                raise
+        script_file_path = str(temporary_script(result))
+        # with temporary_script(result) as script_file_path:
+        try:
+            if is_windows:
+                command = [sys.executable, script_file_path]
+            else:
+                command = [script_file_path]
+            output = run_shell_cmd(command).replace(b"\r\n", b"\n")
+        except:
+            for index, line in enumerate(result.splitlines()):
+                print((index + 1), line)
+            raise
         assert expected_output == output
 
     return script_output
