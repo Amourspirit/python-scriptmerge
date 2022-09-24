@@ -1,22 +1,45 @@
+from __future__ import annotations
+from typing import List, Set
 import ast
 import os.path
 import subprocess
+import re
 
 from .stdlib import is_stdlib_module
 
 
 def script(
-    path,
-    add_python_modules=None,
-    add_python_paths=None,
-    python_binary=None,
-    copy_shebang=False,
-):
+    path: str,
+    add_python_modules: List[str] | None = None,
+    add_python_paths: List[str] = None,
+    python_binary: str | None = None,
+    copy_shebang: bool = False,
+    exclude_python_modules: List[str] | None = None,
+) -> str:
+    """
+    Generate Script
+
+    Args:
+        path (str): Path to entry point py file
+        add_python_modules (List[str] | None, optional): Extra Python modules to include.
+        add_python_paths (List[str], optional): Extra Python paths used to search for modules.
+        python_binary (str | None, optional): Path to any binary to include.
+        copy_shebang (bool, optional): Copy Shebang.
+        exclude_python_modules (List[str] | None, optional): One or more regular expressions that match Module names to exclude as.
+            Such as ["greetings*"]
+
+    Returns:
+        str: Python modules compiled into single file contents.
+    """
     if add_python_modules is None:
         add_python_modules = []
 
     if add_python_paths is None:
         add_python_paths = []
+    if exclude_python_modules is None:
+        exclude_python_modules = []
+
+    _exclude_python_modules = set(exclude_python_modules)
 
     python_paths = [os.path.dirname(path)] + add_python_paths + _read_sys_path_from_python_bin(python_binary)
 
@@ -24,16 +47,20 @@ def script(
 
     output.append(_generate_shebang(path, copy=copy_shebang))
     output.append(_prelude())
-    output.append(_generate_module_writers(
-        path,
-        sys_path=python_paths,
-        add_python_modules=add_python_modules,
-    ))
+    output.append(
+        _generate_module_writers(
+            path,
+            sys_path=python_paths,
+            add_python_modules=add_python_modules,
+            exclude_python_modules=_exclude_python_modules,
+        )
+    )
     with _open_source_file(path) as source_file:
         output.append(_indent(source_file.read()))
     return "".join(output)
 
-def _read_sys_path_from_python_bin(binary_path):
+
+def _read_sys_path_from_python_bin(binary_path: str):
     if binary_path is None:
         return []
     else:
@@ -47,10 +74,12 @@ def _read_sys_path_from_python_bin(binary_path):
             if line.strip()
         ]
 
-def _indent(string):
+
+def _indent(string: str):
     return "    " + string.replace("\n", "\n    ")
 
-def _generate_shebang(path, copy):
+
+def _generate_shebang(path: str, copy: bool):
     if copy:
         with _open_source_file(path) as script_file:
             first_line = script_file.readline()
@@ -59,77 +88,84 @@ def _generate_shebang(path, copy):
 
     return "#!/usr/bin/env python"
 
+
 def _prelude():
     prelude_path = os.path.join(os.path.dirname(__file__), "prelude.py")
     with open(prelude_path, encoding="utf-8") as prelude_file:
         return prelude_file.read()
 
-def _generate_module_writers(path, sys_path, add_python_modules):
+
+def _generate_module_writers(
+    path: str, sys_path: str, add_python_modules: List[str], exclude_python_modules: Set[str]
+):
     generator = ModuleWriterGenerator(sys_path)
-    generator.generate_for_file(path, add_python_modules=add_python_modules)
+    generator.generate_for_file(
+        path, add_python_modules=add_python_modules, exclude_python_modules=exclude_python_modules
+    )
     return generator.build()
 
+
 class ModuleWriterGenerator(object):
-    def __init__(self, sys_path):
+    def __init__(self, sys_path: str):
         self._sys_path = sys_path
         self._modules = {}
 
     def build(self):
         output = []
         for module_path, module_source in self._modules.values():
-            output.append("    __stickytape_write_module({0}, {1})\n".format(
-                repr(module_path),
-                repr(module_source)
-            ))
+            output.append("    __stickytape_write_module({0}, {1})\n".format(repr(module_path), repr(module_source)))
         return "".join(output)
 
-    def generate_for_file(self, python_file_path, add_python_modules):
-        self._generate_for_module(ImportTarget(python_file_path, relative_path=None, is_package=False, module_name=None))
+    def generate_for_file(
+        self, python_file_path: str, add_python_modules: List[str], exclude_python_modules: Set[str]
+    ):
+        self._generate_for_module(
+            ImportTarget(python_file_path, relative_path=None, is_package=False, module_name=None),
+            exclude_python_modules,
+        )
 
         for add_python_module in add_python_modules:
             import_line = ImportLine(module_name=add_python_module, items=[])
-            self._generate_for_import(python_module=None, import_line=import_line)
+            self._generate_for_import(python_module=None, import_line=import_line,exclude_python_modules=exclude_python_modules)
 
-    def _generate_for_module(self, python_module):
+    def _generate_for_module(self, python_module: ImportTarget, exclude_python_modules: Set[str]):
+        def is_excluded(line: ImportLine):
+            for exclude in exclude_python_modules:
+                if re.match(exclude, line.module_name):
+                    return True
+            return False
         import_lines = _find_imports_in_module(python_module)
         for import_line in import_lines:
-            if not _is_stdlib_import(import_line):
-                self._generate_for_import(python_module, import_line)
+            if not _is_stdlib_import(import_line) and not is_excluded(import_line):
+                self._generate_for_import(python_module, import_line, exclude_python_modules)
 
-    def _generate_for_import(self, python_module, import_line):
+    def _generate_for_import(self, python_module: ImportTarget, import_line: ImportTarget, exclude_python_modules: Set[str]):
         import_targets = self._read_possible_import_targets(python_module, import_line)
 
         for import_target in import_targets:
             if import_target.module_name not in self._modules:
                 self._modules[import_target.module_name] = (import_target.relative_path, import_target.read_binary())
-                self._generate_for_module(import_target)
+                self._generate_for_module(python_module=import_target, exclude_python_modules=exclude_python_modules)
 
-    def _read_possible_import_targets(self, python_module, import_line):
+    def _read_possible_import_targets(self, python_module: ImportTarget, import_line: ImportLine) -> List[ImportTarget]:
         module_name_parts = import_line.module_name.split(".")
 
-        module_names = [
-            ".".join(module_name_parts[0:index + 1])
-            for index in range(len(module_name_parts))
-        ] + [
-            import_line.module_name + "." + item
-            for item in import_line.items
+        module_names = [".".join(module_name_parts[0 : index + 1]) for index in range(len(module_name_parts))] + [
+            import_line.module_name + "." + item for item in import_line.items
         ]
 
-        import_targets = [
-            self._find_module(module_name)
-            for module_name in module_names
-        ]
+        import_targets = [self._find_module(module_name) for module_name in module_names]
 
         valid_import_targets = [target for target in import_targets if target is not None]
         return valid_import_targets
         # TODO: allow the user some choice in what happens in this case?
         # Detection of try/except blocks is possibly over-complicating things
-        #~ if len(valid_import_targets) > 0:
-            #~ return valid_import_targets
-        #~ else:
-            #~ raise RuntimeError("Could not find module: " + import_line.import_path)
+        # ~ if len(valid_import_targets) > 0:
+        # ~ return valid_import_targets
+        # ~ else:
+        # ~ raise RuntimeError("Could not find module: " + import_line.import_path)
 
-    def _find_module(self, module_name):
+    def _find_module(self, module_name: str):
         for sys_path in self._sys_path:
             for is_package in (True, False):
                 if is_package:
@@ -149,7 +185,7 @@ class ModuleWriterGenerator(object):
         return None
 
 
-def _find_imports_in_module(python_module):
+def _find_imports_in_module(python_module: ImportTarget):
     source = _read_binary(python_module.absolute_path)
     parse_tree = ast.parse(source, python_module.absolute_path)
 
@@ -180,29 +216,31 @@ def _find_imports_in_module(python_module):
             yield ImportLine(module, [name.name for name in node.names])
 
 
-def _read_binary(path):
+def _read_binary(path: str) -> bytes:
     with open(path, "rb") as file:
         return file.read()
 
 
-def _open_source_file(path):
+def _open_source_file(path: str):
     return open(path, "rt", encoding="utf-8")
 
 
-def _is_stdlib_import(import_line):
+def _is_stdlib_import(import_line: ImportLine):
     return is_stdlib_module(import_line.module_name)
 
+
 class ImportTarget(object):
-    def __init__(self, absolute_path, relative_path, is_package, module_name):
+    def __init__(self, absolute_path: str, relative_path: str, is_package: bool, module_name: str):
         self.absolute_path = absolute_path
         self.relative_path = relative_path
         self.is_package = is_package
         self.module_name = module_name
 
-    def read_binary(self):
+    def read_binary(self) -> bytes:
         return _read_binary(self.absolute_path)
 
+
 class ImportLine(object):
-    def __init__(self, module_name, items):
+    def __init__(self, module_name: str, items: List[str]):
         self.module_name = module_name
         self.items = items
