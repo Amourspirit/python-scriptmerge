@@ -1,7 +1,7 @@
 import sys
 
 
-def is_stdlib_module(module_name):
+def is_stdlib_module(module_name: str):
     return module_name in _stdlib_modules
 
 

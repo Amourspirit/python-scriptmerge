@@ -2,10 +2,7 @@ import pytest
 import os
 import sys
 import platform
-import shutil
-import tempfile
 import subprocess
-import contextlib
 import re
 import stat
 
@@ -44,16 +41,6 @@ def capture_stdout(monkeypatch) -> dict:
 @pytest.fixture(scope="session")
 def run_shell_cmd() -> bytes:
     def run_shell(cmd) -> str:
-        # run shell command
-        # myenv = os.environ.copy()
-        # pypath = ''
-        # p_sep = ':' if is_windows else ';'
-        # for d in sys.path:
-        #     pypath = pypath + d + p_sep
-        # myenv['PYTHONPATH'] = pypath
-        # result = subprocess.run(cmd, env=myenv, stdout=subprocess.PIPE)
-        # result = subprocess.run(cmd, env=myenv, capture_output=True, shell=True)
-        # return result.stdout
         result = subprocess.check_output(cmd)
         return result
 
@@ -61,16 +48,24 @@ def run_shell_cmd() -> bytes:
 
 
 @pytest.fixture(scope="session")
-def chk_script_output(find_script, run_shell_cmd, is_windows, temporary_script):
-    def script_output(script_path, expected_output, expected_modules=None, **kwargs):
+def get_script_str(find_script):
+    def _get_script_str(script_path, **kwargs):
         result = stickytape.script(find_script(script_path), **kwargs)
+        return result
+
+    return _get_script_str
+
+
+@pytest.fixture(scope="session")
+def chk_script_output(get_script_str, run_shell_cmd, is_windows, temporary_script):
+    def script_output(script_path, expected_output, expected_modules=None, **kwargs):
+        result = get_script_str(script_path, **kwargs)
 
         if expected_modules is not None:
             actual_modules = set(re.findall(r"__stickytape_write_module\('([^']*)\.py'", result))
             assert set(expected_modules) == actual_modules
 
         script_file_path = str(temporary_script(result))
-        # with temporary_script(result) as script_file_path:
         try:
             if is_windows:
                 command = [sys.executable, script_file_path]

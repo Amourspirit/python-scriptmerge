@@ -25,6 +25,7 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("script")
     parser.add_argument("--add-python-module", action="append", default=[])
+    parser.add_argument("--exclude-python-module", action="append", default=[])
     parser.add_argument("--add-python-path", action="append", default=[])
     parser.add_argument("--python-binary")
     parser.add_argument("--output-file")
