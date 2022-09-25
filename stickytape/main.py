@@ -14,6 +14,7 @@ def main():
         python_binary=args.python_binary,
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
+        clean=args.clean
     )
     output_file.write(output)
 
@@ -34,6 +35,7 @@ def _parse_args():
     parser.add_argument("--python-binary")
     parser.add_argument("--output-file")
     parser.add_argument("--copy-shebang", action="store_true")
+    parser.add_argument("--clean", action="store_true")
     return parser.parse_args()
 
 

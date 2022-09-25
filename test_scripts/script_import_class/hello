@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+"""
+Example of importing a class
+"""
+# region Imports
+from greetings.greeting import Greeting
+
+# endregion Imports
+
+# region code
+greet = Greeting("Hello")
+
+print(greet.get_greeting("World"))
+# endregion code

@@ -165,3 +165,11 @@ def test_additional_python_modules_can_be_explicitly_included(chk_script_output)
 
 def test_script_using_multi_import(chk_script_output) -> None:
     chk_script_output(script_path="script_using_multi_import/hello", expected_output=b"Hello\nGoodbye\n")
+
+
+def test_script_import_class(chk_script_output) -> None:
+    chk_script_output(script_path="script_import_class/hello", expected_output=b"Hello World\n")
+
+
+def test_script_import_class_clean(chk_script_output) -> None:
+    chk_script_output(script_path="script_import_class/hello", expected_output=b"Hello World\n", clean=True)

@@ -5,8 +5,14 @@ import os.path
 import subprocess
 import re
 
+import io
+import tokenize
+
 from .stdlib import is_stdlib_module
 
+
+# _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
+# https://peps.python.org/pep-0263/
 
 def script(
     path: str,
@@ -15,6 +21,7 @@ def script(
     python_binary: str | None = None,
     copy_shebang: bool = False,
     exclude_python_modules: List[str] | None = None,
+    clean: bool = False,
 ) -> str:
     """
     Generate Script
@@ -53,6 +60,7 @@ def script(
             sys_path=python_paths,
             add_python_modules=add_python_modules,
             exclude_python_modules=_exclude_python_modules,
+            clean=clean,
         )
     )
     with _open_source_file(path) as source_file:
@@ -96,9 +104,9 @@ def _prelude():
 
 
 def _generate_module_writers(
-    path: str, sys_path: str, add_python_modules: List[str], exclude_python_modules: Set[str]
+    path: str, sys_path: str, add_python_modules: List[str], exclude_python_modules: Set[str], clean: bool
 ):
-    generator = ModuleWriterGenerator(sys_path)
+    generator = ModuleWriterGenerator(sys_path, clean)
     generator.generate_for_file(
         path, add_python_modules=add_python_modules, exclude_python_modules=exclude_python_modules
     )
@@ -106,9 +114,10 @@ def _generate_module_writers(
 
 
 class ModuleWriterGenerator(object):
-    def __init__(self, sys_path: str):
+    def __init__(self, sys_path: str, clean: bool):
         self._sys_path = sys_path
         self._modules = {}
+        self._clean = clean
 
     def build(self):
         output = []
@@ -120,13 +129,15 @@ class ModuleWriterGenerator(object):
         self, python_file_path: str, add_python_modules: List[str], exclude_python_modules: Set[str]
     ):
         self._generate_for_module(
-            ImportTarget(python_file_path, relative_path=None, is_package=False, module_name=None),
+            ImportTarget(python_file_path, relative_path=None, is_package=False, module_name=None, clean=self._clean),
             exclude_python_modules,
         )
 
         for add_python_module in add_python_modules:
             import_line = ImportLine(module_name=add_python_module, items=[])
-            self._generate_for_import(python_module=None, import_line=import_line,exclude_python_modules=exclude_python_modules)
+            self._generate_for_import(
+                python_module=None, import_line=import_line, exclude_python_modules=exclude_python_modules
+            )
 
     def _generate_for_module(self, python_module: ImportTarget, exclude_python_modules: Set[str]):
         def is_excluded(line: ImportLine):
@@ -134,12 +145,15 @@ class ModuleWriterGenerator(object):
                 if re.match(exclude, line.module_name):
                     return True
             return False
+
         import_lines = _find_imports_in_module(python_module)
         for import_line in import_lines:
             if not _is_stdlib_import(import_line) and not is_excluded(import_line):
                 self._generate_for_import(python_module, import_line, exclude_python_modules)
 
-    def _generate_for_import(self, python_module: ImportTarget, import_line: ImportTarget, exclude_python_modules: Set[str]):
+    def _generate_for_import(
+        self, python_module: ImportTarget, import_line: ImportTarget, exclude_python_modules: Set[str]
+    ):
         import_targets = self._read_possible_import_targets(python_module, import_line)
 
         for import_target in import_targets:
@@ -147,7 +161,9 @@ class ModuleWriterGenerator(object):
                 self._modules[import_target.module_name] = (import_target.relative_path, import_target.read_binary())
                 self._generate_for_module(python_module=import_target, exclude_python_modules=exclude_python_modules)
 
-    def _read_possible_import_targets(self, python_module: ImportTarget, import_line: ImportLine) -> List[ImportTarget]:
+    def _read_possible_import_targets(
+        self, python_module: ImportTarget, import_line: ImportLine
+    ) -> List[ImportTarget]:
         module_name_parts = import_line.module_name.split(".")
 
         module_names = [".".join(module_name_parts[0 : index + 1]) for index in range(len(module_name_parts))] + [
@@ -181,6 +197,7 @@ class ModuleWriterGenerator(object):
                         relative_path=relative_path,
                         is_package=is_package,
                         module_name=module_name,
+                        clean=self._clean,
                     )
         return None
 
@@ -229,15 +246,93 @@ def _is_stdlib_import(import_line: ImportLine):
     return is_stdlib_module(import_line.module_name)
 
 
+def _remove_comments_and_docstrings(source: str) -> str:
+    """
+    Returns 'source' minus comments and docstrings.
+    """
+    # https://stackoverflow.com/questions/1769332/script-to-remove-python-comments-docstrings
+    io_obj = io.StringIO(source)
+    out = ""
+    prev_toktype = tokenize.INDENT
+    last_lineno = -1
+    last_col = 0
+    i = 0
+        
+    for tok in tokenize.generate_tokens(io_obj.readline):
+        token_type = tok[0]
+        token_string = tok[1]
+        start_line, start_col = tok[2]
+        end_line, end_col = tok[3]
+        ltext = tok[4]
+        # The following two conditionals preserve indentation.
+        # This is necessary because we're not using tokenize.untokenize()
+        # (because it spits out code with copious amounts of oddly-placed
+        # whitespace).
+        if start_line > last_lineno:
+            last_col = 0
+        if start_col > last_col:
+            out += " " * (start_col - last_col)
+        # Remove comments if not coding or shebang:
+        if token_type == tokenize.COMMENT:
+            if i > 0:
+                pass
+            else:
+                if token_string.startswith("#!"):
+                    out += token_string
+        # This series of conditionals removes docstrings:
+        elif token_type == tokenize.STRING:
+            if prev_toktype != tokenize.INDENT:
+                # This is likely a docstring; double-check we're not inside an operator:
+                if prev_toktype != tokenize.NEWLINE:
+                    # Note regarding NEWLINE vs NL: The tokenize module
+                    # differentiates between newlines that start a new statement
+                    # and newlines inside of operators such as parens, brackes,
+                    # and curly braces.  Newlines inside of operators are
+                    # NEWLINE and newlines that start new code are NL.
+                    # Catch whole-module docstrings:
+                    if start_col > 0:
+                        # Unlabelled indentation means we're inside an operator
+                        out += token_string
+                    # Note regarding the INDENT token: The tokenize module does
+                    # not label indentation inside of an operator (parens,
+                    # brackets, and curly braces) as actual indentation.
+                    # For example:
+                    # def foo():
+                    #     "The spaces before this docstring are tokenize.INDENT"
+                    #     test = [
+                    #         "The spaces before this string do not get a token"
+                    #     ]
+        else:
+            out += token_string
+        prev_toktype = token_type
+        last_col = end_col
+        last_lineno = end_line
+    i += 1
+    
+    # replace multiable new-lines with single new-line
+    result = re.sub(r'\n+', '\n', out)
+    result = result.strip()
+    if len(result) > 0:
+        result = result + '\n'
+    return result
+
+
 class ImportTarget(object):
-    def __init__(self, absolute_path: str, relative_path: str, is_package: bool, module_name: str):
+    def __init__(self, absolute_path: str, relative_path: str, is_package: bool, module_name: str, clean: bool):
         self.absolute_path = absolute_path
         self.relative_path = relative_path
         self.is_package = is_package
         self.module_name = module_name
+        self._clean = clean
 
     def read_binary(self) -> bytes:
-        return _read_binary(self.absolute_path)
+        if self._clean:
+            with open(self.absolute_path, "rt", encoding="utf-8") as file:
+                file_str = _remove_comments_and_docstrings(file.read())
+                return file_str.encode("utf-8")
+
+        with open(self.absolute_path, "rb") as file:
+            return file.read()
 
 
 class ImportLine(object):
