@@ -14,6 +14,7 @@ from .stdlib import is_stdlib_module
 # _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
 # https://peps.python.org/pep-0263/
 
+
 def script(
     path: str,
     add_python_modules: List[str] | None = None,
@@ -257,7 +258,7 @@ def _remove_comments_and_docstrings(source: str) -> str:
     last_lineno = -1
     last_col = 0
     i = 0
-        
+
     for tok in tokenize.generate_tokens(io_obj.readline):
         token_type = tok[0]
         token_string = tok[1]
@@ -308,12 +309,14 @@ def _remove_comments_and_docstrings(source: str) -> str:
         last_col = end_col
         last_lineno = end_line
     i += 1
-    
+
     # replace multiable new-lines with single new-line
-    result = re.sub(r'\n+', '\n', out)
-    result = result.strip()
+    result = out.strip()
     if len(result) > 0:
-        result = result + '\n'
+        # remove empty lines
+        lines = [line for line in result.splitlines() if line.strip() != ""]
+        lines.append("")  # so final output ends with and empty line.
+        result = "\n".join(lines)
     return result
 
 
