@@ -11,7 +11,8 @@ import tokenize
 from .stdlib import is_stdlib_module
 
 
-_RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
+# _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
+# https://peps.python.org/pep-0263/
 
 def script(
     path: str,
@@ -250,11 +251,6 @@ def _remove_comments_and_docstrings(source: str) -> str:
     Returns 'source' minus comments and docstrings.
     """
     # https://stackoverflow.com/questions/1769332/script-to-remove-python-comments-docstrings
-    def is_shebang_or_coding(comment_str: str) -> bool:
-        if comment_str.startswith("#!"):
-            return True
-        if _RE_CODING.match(comment_str):
-            return True
     io_obj = io.StringIO(source)
     out = ""
     prev_toktype = tokenize.INDENT
@@ -278,10 +274,10 @@ def _remove_comments_and_docstrings(source: str) -> str:
             out += " " * (start_col - last_col)
         # Remove comments if not coding or shebang:
         if token_type == tokenize.COMMENT:
-            if i > 1:
+            if i > 0:
                 pass
             else:
-                if is_shebang_or_coding(token_string):
+                if token_string.startswith("#!"):
                     out += token_string
         # This series of conditionals removes docstrings:
         elif token_type == tokenize.STRING:
