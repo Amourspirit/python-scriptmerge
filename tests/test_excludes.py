@@ -72,11 +72,14 @@ def test_script_with_single_local_import_drop(get_script_str) -> None:
     assert script.find("Hello") == -1
 
 
-def test_script_with_single_local_import_drop(get_script_str) -> None:
-    script: str = get_script_str("script_using_multi_import/hello")
-    assert script.find("Hello") > 0
-    assert script.find("Goodbye") > 0
+def test_script_using_multi_import_drop(get_script_str, chk_script_output, get_expected_modules) -> None:
+    # greetings
+    chk_script_output(
+        script_path="script_import_class/hello",
+        expected_output=b"Hello World\n",
+        expected_modules=["greetings/__init__", "greetings/greeting"],
+    )
 
     script = get_script_str("script_using_multi_import/hello", exclude_python_modules=["greetings*"])
-    assert script.find("Hello") == -1
-    assert script.find("Goodbye") == -1
+    mods = get_expected_modules(script)
+    assert mods == set()

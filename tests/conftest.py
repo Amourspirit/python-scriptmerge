@@ -57,12 +57,18 @@ def get_script_str(find_script):
 
 
 @pytest.fixture(scope="session")
-def chk_script_output(get_script_str, run_shell_cmd, is_windows, temporary_script):
+def get_expected_modules():
+    def _get_expected_modules(script_str):
+        return set(re.findall(r"__stickytape_write_module\('([^']*)\.py'", script_str))
+    return _get_expected_modules
+
+@pytest.fixture(scope="session")
+def chk_script_output(get_script_str, run_shell_cmd, is_windows, temporary_script, get_expected_modules):
     def script_output(script_path, expected_output, expected_modules=None, **kwargs):
         result = get_script_str(script_path, **kwargs)
 
         if expected_modules is not None:
-            actual_modules = set(re.findall(r"__stickytape_write_module\('([^']*)\.py'", result))
+            actual_modules = get_expected_modules(result)
             assert set(expected_modules) == actual_modules
 
         script_file_path = str(temporary_script(result))
