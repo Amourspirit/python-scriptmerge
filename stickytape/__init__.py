@@ -313,9 +313,11 @@ def _remove_comments_and_docstrings(source: str) -> str:
         last_lineno = end_line
     i += 1
     
-    result = out.strip()
+    # replace multiable new-lines with single new-line
+    result = re.sub(r'\n+', '\n', out)
+    result = result.strip()
     if len(result) > 0:
-        result = result.strip() + '\n'
+        result = result + '\n'
     return result
 
 
