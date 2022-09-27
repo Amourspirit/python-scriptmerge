@@ -1,13 +1,13 @@
 import argparse
 import sys
 
-import stickytape
+import scriptmerge
 
 
 def main():
     args = _parse_args()
     output_file = _open_output(args)
-    output = stickytape.script(
+    output = scriptmerge.script(
         args.script,
         add_python_modules=args.add_python_module,
         add_python_paths=args.add_python_path,

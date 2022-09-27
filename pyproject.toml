@@ -8,10 +8,10 @@ testpaths = [
 ]
 
 [project]
-name = "stickytape"
+name = "scriptmerge"
 version = "0.2.1"
 description = "Convert Python packages into a single script"
-keywords = ["stickytape"]
+keywords = ["scriptmerge", "stickytape", "compile"]
 license = {text = "BSD-2-Clause License"}
 dynamic = ["readme"]
 requires-python = ">=3.7"
@@ -29,10 +29,10 @@ repository = "https://github.com/Amourspirit/stickytape"
 
 
 [project.scripts]
-stickytape = "stickytape.main:main"
+stickytape = "scriptmerge.main:main"
 
 [tool.setuptools]
-packages = ["stickytape"]
+packages = ["scriptmerge"]
 license-files = ["LICENSE"]
 
 [tool.setuptools.dynamic]
