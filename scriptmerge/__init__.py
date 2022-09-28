@@ -123,7 +123,7 @@ class ModuleWriterGenerator(object):
     def build(self):
         output = []
         for module_path, module_source in self._modules.values():
-            output.append("    __stickytape_write_module({0}, {1})\n".format(repr(module_path), repr(module_source)))
+            output.append("    __scriptmerge_write_module({0}, {1})\n".format(repr(module_path), repr(module_source)))
         return "".join(output)
 
     def generate_for_file(

@@ -1,39 +1,37 @@
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "scriptmerge"
+version = "0.1.0"
+description = "Convert Python packages into a single script"
+keywords = ["scriptmerge", "stickytape", "compile"]
+license = "BSD-2-Clause"
+readme = "README.md"
+authors = [
+    "Michael Williamson <mike@zwobble.org>",
+    ":Barry-Thomas-Paul: Moss <bigbytetech@gmail.com>"
+]
+homepage = "https://github.com/Amourspirit/stickytape"
+documentation = "https://github.com/Amourspirit/stickytape"
+repository = "https://github.com/Amourspirit/stickytape"
+packages = [
+    { include = "scriptmerge" }
+]
+
+[tool.poetry.scripts]
+stickytape = "scriptmerge.main:main"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.group.test.dependencies]
+pytest="7.0.1"
+virtualenv="^20.16.5"
+tox = "^3.26.0"
 
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
 ]
-
-[project]
-name = "stickytape"
-version = "0.2.1"
-description = "Convert Python packages into a single script"
-keywords = ["stickytape"]
-license = {text = "BSD-2-Clause License"}
-dynamic = ["readme"]
-requires-python = ">=3.7"
-authors = [
-  {email = "mike@zwobble.org"},
-  {name = "Michael Williamson"},
-  {email = "bigbytetech@gmail.com"},
-  {name = ":Barry-Thomas-Paul: Moss"}
-]
-
-[project.urls]
-homepage = "https://github.com/Amourspirit/stickytape"
-documentation = "https://github.com/Amourspirit/stickytape"
-repository = "https://github.com/Amourspirit/stickytape"
-
-
-[project.scripts]
-stickytape = "stickytape.main:main"
-
-[tool.setuptools]
-packages = ["stickytape"]
-license-files = ["LICENSE"]
-
-[tool.setuptools.dynamic]
-readme = {file = ["README.rst"]}

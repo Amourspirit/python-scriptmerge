@@ -7,7 +7,7 @@ import re
 import stat
 
 
-import stickytape
+import scriptmerge
 from test_scripts import root as test_script_root
 
 
@@ -50,7 +50,7 @@ def run_shell_cmd() -> bytes:
 @pytest.fixture(scope="session")
 def get_script_str(find_script):
     def _get_script_str(script_path, **kwargs):
-        result = stickytape.script(find_script(script_path), **kwargs)
+        result = scriptmerge.script(find_script(script_path), **kwargs)
         return result
 
     return _get_script_str
@@ -59,7 +59,7 @@ def get_script_str(find_script):
 @pytest.fixture(scope="session")
 def get_expected_modules():
     def _get_expected_modules(script_str):
-        return set(re.findall(r"__stickytape_write_module\('([^']*)\.py'", script_str))
+        return set(re.findall(r"__scriptmerge_write_module\('([^']*)\.py'", script_str))
     return _get_expected_modules
 
 @pytest.fixture(scope="session")
