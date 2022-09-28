@@ -4,24 +4,38 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "scriptmerge"
-version = "0.1.0"
+version = "1.0.0"
 description = "Convert Python packages into a single script"
 keywords = ["scriptmerge", "stickytape", "compile"]
 license = "BSD-2-Clause"
 readme = "README.md"
 authors = [
+    ":Barry-Thomas-Paul: Moss <bigbytetech@gmail.com>",
     "Michael Williamson <mike@zwobble.org>",
-    ":Barry-Thomas-Paul: Moss <bigbytetech@gmail.com>"
 ]
-homepage = "https://github.com/Amourspirit/stickytape"
-documentation = "https://github.com/Amourspirit/stickytape"
-repository = "https://github.com/Amourspirit/stickytape"
+homepage = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+documentation = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+repository = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
 packages = [
     { include = "scriptmerge" }
 ]
+classifiers = [
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10"
+]
 
 [tool.poetry.scripts]
-stickytape = "scriptmerge.main:main"
+scriptmerge = "scriptmerge.main:main"
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -30,6 +44,13 @@ python = "^3.7"
 pytest="7.0.1"
 virtualenv="^20.16.5"
 tox = "^3.26.0"
+
+
+[[tool.poetry.source]]
+name = "pypi-test"
+url = "https://test.pypi.org/legacy/"
+default = false
+secondary = false
 
 [tool.pytest.ini_options]
 testpaths = [
