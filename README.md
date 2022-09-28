@@ -13,8 +13,7 @@ For instance:
 
 Since scriptmerge relies on correctly analysing both your script and any dependent modules,
 it may not work correctly in all circumstances.
-I bodged together the code a long time ago for a specific use case I had,
-so many normal uses of Python imports are not properly supported.
+
 
 ## Installation
 
@@ -44,11 +43,25 @@ sys.path from, for instance the Python binary inside a virtualenv:
 scriptmerge scripts/blah --python-binary _virtualenv/bin/python --output-file /tmp/blah-standalone
 ```
 
-scriptmerge cannot automatically detect dynamic imports,
+Sscriptmerge cannot automatically detect dynamic imports,
 but you can use `--add-python-module` to explicitly include modules:
 
 ```sh
 scriptmerge scripts/blah --add-python-module blah.util
+```
+
+Scriptmerge can exclucde modules from be added to output.
+This is useful in special cases where is it known that a module is not required to run the methods being used in the output.
+An example might be a script that is being used as a LibreOffice macro.
+You can use `--exclude-python-module` to explicitly exclude modules.
+
+`--exclude-python-module` takes one or more regular expressions
+
+In this example module `blah` is excluded entirly.
+`blah\.*` matches modules such as `blah.__init__`, `blah.my_sub_module`.
+
+```sh
+scriptmerge scripts/blah --exclude-python-module blah\.*
 ```
 
 By default, scriptmerge will ignore the shebang in the script
@@ -58,6 +71,18 @@ use `--copy-shebang`:
 
 ```sh
 scriptmerge scripts/blah --copy-shebang --output-file /tmp/blah-standalone
+```
+
+Scritpmerge can strip all doc strings and comments from imported modules using the `--clean` option.
+
+```sh
+scriptmerge --clean
+```
+
+To see all scriptmerge options:
+
+```sh
+scriptmerge --help
 ```
 
 As you might expect with a program that munges source files, there are a
