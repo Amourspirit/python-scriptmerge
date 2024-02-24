@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "scriptmerge"
-version = "1.0.0"
+version = "1.1.0"
 description = "Convert Python packages into a single script"
 keywords = ["scriptmerge", "stickytape", "compile"]
 license = "BSD-2-Clause"
@@ -45,12 +45,15 @@ pytest="7.0.1"
 virtualenv="^20.16.5"
 tox = "^3.26.0"
 
-
 [[tool.poetry.source]]
 name = "pypi-test"
 url = "https://test.pypi.org/legacy/"
-default = false
-secondary = false
+priority = "supplemental"
+
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
 
 [tool.pytest.ini_options]
 testpaths = [

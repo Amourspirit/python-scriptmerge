@@ -16,7 +16,7 @@ def main() -> int:
         python_binary=args.python_binary,
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
-        clean=args.clean
+        clean=args.clean,
     )
     output_file.write(output)
     return 0

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Set
 import ast
+import os
 import os.path
 import subprocess
 import re
@@ -9,6 +10,9 @@ import io
 import tokenize
 
 from .stdlib import is_stdlib_module
+
+# set a flag to indicate that we are running in the scriptmerge context
+os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
 
 # _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
@@ -49,7 +53,11 @@ def script(
 
     _exclude_python_modules = set(exclude_python_modules)
 
-    python_paths = [os.path.dirname(path)] + add_python_paths + _read_sys_path_from_python_bin(python_binary)
+    python_paths = (
+        [os.path.dirname(path)]
+        + add_python_paths
+        + _read_sys_path_from_python_bin(python_binary)
+    )
 
     output = []
 
@@ -105,11 +113,17 @@ def _prelude():
 
 
 def _generate_module_writers(
-    path: str, sys_path: str, add_python_modules: List[str], exclude_python_modules: Set[str], clean: bool
+    path: str,
+    sys_path: str,
+    add_python_modules: List[str],
+    exclude_python_modules: Set[str],
+    clean: bool,
 ):
     generator = ModuleWriterGenerator(sys_path, clean)
     generator.generate_for_file(
-        path, add_python_modules=add_python_modules, exclude_python_modules=exclude_python_modules
+        path,
+        add_python_modules=add_python_modules,
+        exclude_python_modules=exclude_python_modules,
     )
     return generator.build()
 
@@ -123,24 +137,41 @@ class ModuleWriterGenerator(object):
     def build(self):
         output = []
         for module_path, module_source in self._modules.values():
-            output.append("    __scriptmerge_write_module({0}, {1})\n".format(repr(module_path), repr(module_source)))
+            output.append(
+                "    __scriptmerge_write_module({0}, {1})\n".format(
+                    repr(module_path), repr(module_source)
+                )
+            )
         return "".join(output)
 
     def generate_for_file(
-        self, python_file_path: str, add_python_modules: List[str], exclude_python_modules: Set[str]
+        self,
+        python_file_path: str,
+        add_python_modules: List[str],
+        exclude_python_modules: Set[str],
     ):
         self._generate_for_module(
-            ImportTarget(python_file_path, relative_path=None, is_package=False, module_name=None, clean=self._clean),
+            ImportTarget(
+                python_file_path,
+                relative_path=None,
+                is_package=False,
+                module_name=None,
+                clean=self._clean,
+            ),
             exclude_python_modules,
         )
 
         for add_python_module in add_python_modules:
             import_line = ImportLine(module_name=add_python_module, items=[])
             self._generate_for_import(
-                python_module=None, import_line=import_line, exclude_python_modules=exclude_python_modules
+                python_module=None,
+                import_line=import_line,
+                exclude_python_modules=exclude_python_modules,
             )
 
-    def _generate_for_module(self, python_module: ImportTarget, exclude_python_modules: Set[str]):
+    def _generate_for_module(
+        self, python_module: ImportTarget, exclude_python_modules: Set[str]
+    ):
         def is_excluded(line: ImportLine):
             for exclude in exclude_python_modules:
                 if re.match(exclude, line.module_name):
@@ -150,30 +181,46 @@ class ModuleWriterGenerator(object):
         import_lines = _find_imports_in_module(python_module)
         for import_line in import_lines:
             if not _is_stdlib_import(import_line) and not is_excluded(import_line):
-                self._generate_for_import(python_module, import_line, exclude_python_modules)
+                self._generate_for_import(
+                    python_module, import_line, exclude_python_modules
+                )
 
     def _generate_for_import(
-        self, python_module: ImportTarget, import_line: ImportTarget, exclude_python_modules: Set[str]
+        self,
+        python_module: ImportTarget,
+        import_line: ImportTarget,
+        exclude_python_modules: Set[str],
     ):
         import_targets = self._read_possible_import_targets(python_module, import_line)
 
         for import_target in import_targets:
             if import_target.module_name not in self._modules:
-                self._modules[import_target.module_name] = (import_target.relative_path, import_target.read_binary())
-                self._generate_for_module(python_module=import_target, exclude_python_modules=exclude_python_modules)
+                self._modules[import_target.module_name] = (
+                    import_target.relative_path,
+                    import_target.read_binary(),
+                )
+                self._generate_for_module(
+                    python_module=import_target,
+                    exclude_python_modules=exclude_python_modules,
+                )
 
     def _read_possible_import_targets(
         self, python_module: ImportTarget, import_line: ImportLine
     ) -> List[ImportTarget]:
         module_name_parts = import_line.module_name.split(".")
 
-        module_names = [".".join(module_name_parts[0 : index + 1]) for index in range(len(module_name_parts))] + [
-            import_line.module_name + "." + item for item in import_line.items
+        module_names = [
+            ".".join(module_name_parts[0 : index + 1])
+            for index in range(len(module_name_parts))
+        ] + [import_line.module_name + "." + item for item in import_line.items]
+
+        import_targets = [
+            self._find_module(module_name) for module_name in module_names
         ]
 
-        import_targets = [self._find_module(module_name) for module_name in module_names]
-
-        valid_import_targets = [target for target in import_targets if target is not None]
+        valid_import_targets = [
+            target for target in import_targets if target is not None
+        ]
         return valid_import_targets
         # TODO: allow the user some choice in what happens in this case?
         # Detection of try/except blocks is possibly over-complicating things
@@ -224,7 +271,9 @@ def _find_imports_in_module(python_module: ImportTarget):
                 if level == 0:
                     package_name = python_module.module_name
                 else:
-                    package_name = ".".join(python_module.module_name.split(".")[:-level])
+                    package_name = ".".join(
+                        python_module.module_name.split(".")[:-level]
+                    )
 
                 if node.module is None:
                     module = package_name
@@ -321,7 +370,14 @@ def _remove_comments_and_docstrings(source: str) -> str:
 
 
 class ImportTarget(object):
-    def __init__(self, absolute_path: str, relative_path: str, is_package: bool, module_name: str, clean: bool):
+    def __init__(
+        self,
+        absolute_path: str,
+        relative_path: str,
+        is_package: bool,
+        module_name: str,
+        clean: bool,
+    ):
         self.absolute_path = absolute_path
         self.relative_path = relative_path
         self.is_package = is_package
