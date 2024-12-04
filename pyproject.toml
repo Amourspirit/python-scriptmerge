@@ -4,9 +4,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "scriptmerge"
-version = "1.1.0"
+version = "2.0.0"
 description = "Convert Python packages into a single script"
-keywords = ["scriptmerge", "stickytape", "compile"]
+keywords = ["scriptmerge", "stickytape", "compile", "oooscript"]
 license = "BSD-2-Clause"
 readme = "README.md"
 authors = [
@@ -31,7 +31,9 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10"
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
 ]
 
 [tool.poetry.scripts]

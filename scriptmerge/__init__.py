@@ -5,9 +5,11 @@ import os
 import os.path
 import subprocess
 import re
-
 import io
 import tokenize
+import zipapp
+import tempfile
+import shutil
 
 from .stdlib import is_stdlib_module
 
@@ -27,7 +29,7 @@ def script(
     copy_shebang: bool = False,
     exclude_python_modules: List[str] | None = None,
     clean: bool = False,
-) -> str:
+) -> bytes:
     """
     Generate Script
 
@@ -59,22 +61,44 @@ def script(
         + _read_sys_path_from_python_bin(python_binary)
     )
 
-    output = []
-
-    output.append(_generate_shebang(path, copy=copy_shebang))
-    output.append(_prelude())
-    output.append(
-        _generate_module_writers(
+    with tempfile.TemporaryDirectory() as archive_dir:
+        shutil.copyfile(path, os.path.join(archive_dir, "__main__.py"))
+        generator = ModuleWriterGenerator(sys_path=python_paths, clean=clean)
+        generator.generate_for_file(
             path,
-            sys_path=python_paths,
             add_python_modules=add_python_modules,
             exclude_python_modules=_exclude_python_modules,
-            clean=clean,
         )
-    )
-    with _open_source_file(path) as source_file:
-        output.append(_indent(source_file.read()))
-    return "".join(output)
+        for module in generator._modules.values():
+            make_package(archive_dir=archive_dir, module=module)
+            archive_module_path = os.path.join(archive_dir, module.relative_path)
+            if module.clean:
+                with _open_source_file(module.absolute_path) as f:
+                    source = f.read()
+                source = _remove_comments_and_docstrings(source)
+                with open(archive_module_path, "w") as f:
+                    f.write(source)
+            else:
+                shutil.copyfile(module.absolute_path, archive_module_path)
+
+        output = io.BytesIO()
+        zipapp.create_archive(
+            source=archive_dir,
+            target=output,
+            interpreter=_generate_interpreter(path, copy=copy_shebang),
+        )
+        return output.getvalue()
+
+
+def make_package(archive_dir, module: ImportTarget):
+    parts = os.path.dirname(module.relative_path).split("/")
+    partial_path = archive_dir
+    for part in parts:
+        partial_path = os.path.join(partial_path, part)
+        if not os.path.exists(partial_path):
+            os.mkdir(partial_path)
+            with open(os.path.join(partial_path, "__init__.py"), "wb") as f:
+                f.write(b"\n")
 
 
 def _read_sys_path_from_python_bin(binary_path: str):
@@ -92,57 +116,21 @@ def _read_sys_path_from_python_bin(binary_path: str):
         ]
 
 
-def _indent(string: str):
-    return "    " + string.replace("\n", "\n    ")
-
-
-def _generate_shebang(path: str, copy: bool):
+def _generate_interpreter(path, copy):
     if copy:
         with _open_source_file(path) as script_file:
             first_line = script_file.readline()
             if first_line.startswith("#!"):
-                return first_line
+                return first_line[2:]
 
-    return "#!/usr/bin/env python"
-
-
-def _prelude():
-    prelude_path = os.path.join(os.path.dirname(__file__), "prelude.py")
-    with open(prelude_path, encoding="utf-8") as prelude_file:
-        return prelude_file.read()
+    return "/usr/bin/env python"
 
 
-def _generate_module_writers(
-    path: str,
-    sys_path: str,
-    add_python_modules: List[str],
-    exclude_python_modules: Set[str],
-    clean: bool,
-):
-    generator = ModuleWriterGenerator(sys_path, clean)
-    generator.generate_for_file(
-        path,
-        add_python_modules=add_python_modules,
-        exclude_python_modules=exclude_python_modules,
-    )
-    return generator.build()
-
-
-class ModuleWriterGenerator(object):
+class ModuleWriterGenerator:
     def __init__(self, sys_path: str, clean: bool):
         self._sys_path = sys_path
         self._modules = {}
         self._clean = clean
-
-    def build(self):
-        output = []
-        for module_path, module_source in self._modules.values():
-            output.append(
-                "    __scriptmerge_write_module({0}, {1})\n".format(
-                    repr(module_path), repr(module_source)
-                )
-            )
-        return "".join(output)
 
     def generate_for_file(
         self,
@@ -162,7 +150,7 @@ class ModuleWriterGenerator(object):
         )
 
         for add_python_module in add_python_modules:
-            import_line = ImportLine(module_name=add_python_module, items=[])
+            import_line = ImportLine(module_name=add_python_module)
             self._generate_for_import(
                 python_module=None,
                 import_line=import_line,
@@ -180,10 +168,11 @@ class ModuleWriterGenerator(object):
 
         import_lines = _find_imports_in_module(python_module)
         for import_line in import_lines:
-            if not _is_stdlib_import(import_line) and not is_excluded(import_line):
-                self._generate_for_import(
-                    python_module, import_line, exclude_python_modules
-                )
+            if _is_stdlib_import(import_line) or is_excluded(import_line):
+                continue
+            self._generate_for_import(
+                python_module, import_line, exclude_python_modules
+            )
 
     def _generate_for_import(
         self,
@@ -195,10 +184,7 @@ class ModuleWriterGenerator(object):
 
         for import_target in import_targets:
             if import_target.module_name not in self._modules:
-                self._modules[import_target.module_name] = (
-                    import_target.relative_path,
-                    import_target.read_binary(),
-                )
+                self._modules[import_target.module_name] = import_target
                 self._generate_for_module(
                     python_module=import_target,
                     exclude_python_modules=exclude_python_modules,
@@ -382,19 +368,12 @@ class ImportTarget(object):
         self.relative_path = relative_path
         self.is_package = is_package
         self.module_name = module_name
-        self._clean = clean
-
-    def read_binary(self) -> bytes:
-        if self._clean:
-            with open(self.absolute_path, "rt", encoding="utf-8") as file:
-                file_str = _remove_comments_and_docstrings(file.read())
-                return file_str.encode("utf-8")
-
-        with open(self.absolute_path, "rb") as file:
-            return file.read()
+        self.clean = clean
 
 
-class ImportLine(object):
-    def __init__(self, module_name: str, items: List[str]):
+class ImportLine:
+    def __init__(self, module_name: str, items: List[str] | None = None):
+        if not items:
+            items = []
         self.module_name = module_name
         self.items = items
