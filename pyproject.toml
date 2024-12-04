@@ -1,21 +1,17 @@
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
 name = "scriptmerge"
-version = "2.0.0"
+dynamic = ["version"]
 description = "Convert Python packages into a single script"
 keywords = ["scriptmerge", "stickytape", "compile", "oooscript"]
-license = "BSD-2-Clause"
+license = {file = "LICENSE"}
 readme = "README.md"
+requires-python = ">=3.8"
+
 authors = [
-    ":Barry-Thomas-Paul: Moss <bigbytetech@gmail.com>",
-    "Michael Williamson <mike@zwobble.org>",
+    {name = ":Barry-Thomas-Paul: Moss", email = "bigbytetech@gmail.com"},
+    {name = "Michael Williamson", email = "mike@zwobble.org"}
 ]
-homepage = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
-documentation = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
-repository = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+
 packages = [
     { include = "scriptmerge" }
 ]
@@ -36,28 +32,47 @@ classifiers = [
     "Programming Language :: Python :: 3.12"
 ]
 
-[tool.poetry.scripts]
+[dependency-groups]
+dev = [
+    "python-dotenv>=1.0.1",
+    "tox>=3.26.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+Documentation = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+Repository = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+Issues = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge/issues"
+
+[project.scripts]
 scriptmerge = "scriptmerge.main:main"
 
-[tool.poetry.dependencies]
-python = "^3.7"
+[project.optional-dependencies]
+test = [
+    "pytest == 7.0.1",
+    "virtualenv == 20.16.5",
+    "tox == 3.26.0",]
 
-[tool.poetry.group.test.dependencies]
-pytest="7.0.1"
-virtualenv="^20.16.5"
-tox = "^3.26.0"
+[build-system]
+# requires = ["hatchling", "setuptools_scm"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[[tool.poetry.source]]
-name = "pypi-test"
-url = "https://test.pypi.org/legacy/"
-priority = "supplemental"
+[tool.hatch.build]
+include = [
+    "scriptmerge/**/*",
+]
 
-
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "primary"
+[tool.hatch.version]
+path = "scriptmerge/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
 ]
+
+[tool.tox.gh.python]
+"3.12" = ["3.12", "type", "pkg_meta"]
+"3.11" = ["3.11"]
+"3.10" = ["3.10"]
+

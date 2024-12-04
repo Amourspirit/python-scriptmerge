@@ -13,6 +13,8 @@ import shutil
 
 from .stdlib import is_stdlib_module
 
+__version__ = "2.0.0"
+
 # set a flag to indicate that we are running in the scriptmerge context
 os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
