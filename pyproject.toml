@@ -71,8 +71,8 @@ testpaths = [
     "tests",
 ]
 
-[tool.tox.gh.python]
-"3.12" = ["3.12", "type", "pkg_meta"]
-"3.11" = ["3.11"]
-"3.10" = ["3.10"]
+# [tool.tox.gh.python]
+# "3.12" = ["3.12", "type", "pkg_meta"]
+# "3.11" = ["3.11"]
+# "3.10" = ["3.10"]
 
