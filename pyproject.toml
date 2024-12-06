@@ -24,16 +24,17 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12"
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13"
 ]
 
 [dependency-groups]
 dev = [
+    "pytest>=7.0.1",
     "python-dotenv>=1.0.1",
     "tox>=3.26.0",
 ]
@@ -47,11 +48,6 @@ Issues = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge/iss
 [project.scripts]
 scriptmerge = "scriptmerge.main:main"
 
-[project.optional-dependencies]
-test = [
-    "pytest == 7.0.1",
-    "virtualenv == 20.16.5",
-    "tox == 3.26.0",]
 
 [build-system]
 # requires = ["hatchling", "setuptools_scm"]
@@ -71,8 +67,4 @@ testpaths = [
     "tests",
 ]
 
-# [tool.tox.gh.python]
-# "3.12" = ["3.12", "type", "pkg_meta"]
-# "3.11" = ["3.11"]
-# "3.10" = ["3.10"]
 

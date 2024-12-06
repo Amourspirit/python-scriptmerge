@@ -1,12 +1,18 @@
-# scriptmerge: Convert Python packages into a single script
+# scriptmerge
+
+Convert Python packages into a single script as a standalone `.py` file or a `.pyz` file.
 
 Scriptmerge can be used to convert a Python script and any Python modules
 it depends on into a single-file Python script.
+
+If you want to create a single file that can be executed by a Python interpreter,
+  use the `-z` or `--pyz-out` flag which outputs a [zipapp](https://docs.python.org/3/library/zipapp.html) `.pyz` file.
+
+The `--pyz-out` flag was introduced in verson `2.1.0`.
+
 There are likely better alternatives depending on what you're trying to do.
 For instance:
 
-* If you want to create a single file that can be executed by a Python interpreter,
-  use [zipapp](https://docs.python.org/3/library/zipapp.html).
 
 * If you need to create a standalone executable from your Python script,
   I recommend using an alternative such as [PyInstaller](http://www.pyinstaller.org/).
@@ -43,7 +49,7 @@ sys.path from, for instance the Python binary inside a virtualenv:
 scriptmerge scripts/blah --python-binary _virtualenv/bin/python --output-file /tmp/blah-standalone
 ```
 
-Sscriptmerge cannot automatically detect dynamic imports,
+Scriptmerge cannot automatically detect dynamic imports,
 but you can use `--add-python-module` to explicitly include modules:
 
 ```sh
@@ -65,7 +71,7 @@ scriptmerge scripts/blah --exclude-python-module blah\.*
 ```
 
 By default, scriptmerge will ignore the shebang in the script
-and use `"#!/usr/bin/env python"` in the output file.
+and use `"#!/usr/bin/env python3"` in the output file.
 To copy the shebang from the original script,
 use `--copy-shebang`:
 
@@ -77,6 +83,12 @@ Scritpmerge can strip all doc strings and comments from imported modules using t
 
 ```sh
 scriptmerge --clean
+```
+
+Scriptmerge by default will output a `.py` file. If you want to output a `.pyz` file, use the `--pyz-out` flag.
+
+```sh
+scriptmerge scripts/blah --pyz-out --output-file /tmp/blah-standalone.pyz
 ```
 
 To see all scriptmerge options:

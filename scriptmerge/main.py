@@ -17,6 +17,7 @@ def main() -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
+        pyz_out=args.pyz_out,
     )
     output_file.write(output)
     return 0
@@ -24,21 +25,62 @@ def main() -> int:
 
 def _open_output(args):
     if args.output_file is None:
+        if args.pyz_out:
+            return sys.stdout.buffer
         return sys.stdout
     else:
+        if args.pyz_out:
+            return open(args.output_file, "wb")
         return open(args.output_file, "w")
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("script")
-    parser.add_argument("-a", "--add-python-module", action="append", default=[])
-    parser.add_argument("-e", "--exclude-python-module", action="append", default=[])
-    parser.add_argument("-p", "--add-python-path", action="append", default=[])
-    parser.add_argument("-b", "--python-binary")
-    parser.add_argument("-o", "--output-file")
-    parser.add_argument("-s", "--copy-shebang", action="store_true")
-    parser.add_argument("-c", "--clean", action="store_true")
+    parser.add_argument(
+        "-a",
+        "--add-python-module",
+        action="append",
+        default=[],
+        help="Add python modules to the output",
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude-python-module",
+        action="append",
+        default=[],
+        help="Exclude python modules from the output",
+    )
+    parser.add_argument(
+        "-p",
+        "--add-python-path",
+        action="append",
+        default=[],
+        help="Add python paths to the output",
+    )
+    parser.add_argument(
+        "-b", "--python-binary", help="Include a specific python binary in the output"
+    )
+    parser.add_argument(
+        "-o",
+        "--output-file",
+        help="Output file such as script.py or script.pyz when using -z",
+    )
+    parser.add_argument(
+        "-s",
+        "--copy-shebang",
+        action="store_true",
+        help="Copy the shebang from the script",
+    )
+    parser.add_argument(
+        "-c",
+        "--clean",
+        action="store_true",
+        help="Remove docstring and comments from the script",
+    )
+    parser.add_argument(
+        "-z", "--pyz-out", action="store_true", help="Output as a binary pyz file"
+    )
     if len(sys.argv) <= 1:
         parser.print_help()
         return None
