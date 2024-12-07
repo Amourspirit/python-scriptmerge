@@ -78,7 +78,7 @@ def script(
                 with _open_source_file(module.absolute_path) as f:
                     source = f.read()
                 source = merge_common.remove_comments_and_doc_strings(source)
-                with open(archive_module_path, "w") as f:
+                with open(archive_module_path, "w", encoding="utf-8") as f:
                     f.write(source)
             else:
                 shutil.copyfile(module.absolute_path, archive_module_path)
