@@ -19,7 +19,7 @@ def test_stdlib_module_in_package_is_not_generated(chk_script_output) -> None:
     chk_script_output(
         script_path="script_using_stdlib_module_in_package/hello",
         expected_output=b"xml.etree.ElementTree\nHello\n",
-        expected_modules=["greeting"],
+        expected_modules=["__main__", "greeting"],
         python_binary=sys.executable,
     )
 

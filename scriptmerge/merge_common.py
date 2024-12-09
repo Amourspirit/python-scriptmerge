@@ -1,11 +1,25 @@
-import ast
+from __future__ import annotations
+from typing import Any
 import io
+import os
 import tokenize
+import tempfile
+import shutil
+import contextlib
+from pathlib import Path
+
+CALLBACK_GENERATED_SHEBANG = "GENERATED_SHEBANG"
+CALLBACK_GENERATING_PRELUDE = "GENERATING_PRELUDE"
+CALLBACK_GENERATING_FOR_MODULE = "GENERATING_FOR_MODULE"
+CALLBACK_GENERATING_FOR_FILE = "GENERATING_FOR_FILE"
+CALLBACK_GENERATED_PYTHON_PATHS = "GENERATED_PYTHON_PATHS"
+CALLBACK_GENERATING_MAIN_PY_FILE = "GENERATING_MAIN_PY_FILE"
+CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = "GENERATED_MAIN_PY_FILE_CONTENT"
 
 
 def remove_comments_and_doc_strings(source: str) -> str:
     """
-    Returns 'source' minus comments and docstrings.
+    Returns 'source' minus comments and doc strings.
     """
     # https://stackoverflow.com/questions/1769332/script-to-remove-python-comments-docstrings
     io_obj = io.StringIO(source)
@@ -74,3 +88,105 @@ def remove_comments_and_doc_strings(source: str) -> str:
         lines.append("")  # so final output ends with and empty line.
         result = "\n".join(lines)
     return result
+
+
+class EventArgs:
+    """
+    Event Arguments Class
+    """
+
+    def __init__(self, name: str, source: Any = None) -> None:
+        """
+        Constructor
+
+        Args:
+            source (Any): Event Source
+        """
+        self.name = ""
+        self.source = source
+        self.event_data = None
+
+    @staticmethod
+    def from_args(args: EventArgs) -> EventArgs:
+        """
+        Gets a new instance from existing instance
+
+        Args:
+            args (AbstractEvent): Existing Instance
+
+        Returns:
+            EventArgs: args
+        """
+        ev_args = EventArgs(name=args.name, source=args.source)
+        ev_args.event_data = args.event_data
+        return ev_args
+
+
+class CancelEventArgs(EventArgs):
+    """Cancel Event Arguments"""
+
+    def __init__(self, name=str, source: Any = None) -> None:
+        """
+        Constructor
+
+        Args:
+            source (Any): Event Source
+        """
+        super().__init__(name, source)
+        self.cancel = False
+        self.handled = False
+
+    @staticmethod
+    def from_args(args: CancelEventArgs) -> CancelEventArgs:
+        """
+        Gets a new instance from existing instance
+
+        Args:
+            args (CancelEventArgs): Existing Instance
+
+        Returns:
+            CancelEventArgs: args
+        """
+        ev_args = CancelEventArgs(name=args.name, source=args.source)
+        ev_args.event_data = args.event_data
+        ev_args.cancel = args.cancel
+        ev_args.handled = args.handled
+        return ev_args
+
+
+@contextlib.contextmanager
+def temp_file_manager(content: str, manual_file_name: str = ""):
+    """
+    Manages the creation and cleanup of temporary files.
+    This function can either create a temporary file with a given content and
+    automatically delete it after use, or use a manually specified file name
+    and delete it after use.
+
+    Args:
+        content (str): The content to be written to the temporary file.
+        manual_file_name (str, optional): The name of the file to be created.
+            If not provided, a temporary file
+            with a unique name will be created.
+    Yields:
+        str: The name of the temporary file created.
+    Raises:
+        OSError: If there is an error in file creation or deletion.
+    """
+
+    if manual_file_name:
+        parent_dir = Path(tempfile.mkdtemp())
+        file_name = parent_dir / manual_file_name
+        with open(file_name, "w", encoding="utf-8") as f:
+            f.write(content)
+        try:
+            yield str(file_name)
+        finally:
+            shutil.rmtree(parent_dir)
+    else:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(content.encode())
+            temp_file_name = temp_file.name
+        try:
+            yield temp_file_name
+        finally:
+            os.remove(temp_file_name)

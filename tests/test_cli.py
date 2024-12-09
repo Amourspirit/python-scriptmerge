@@ -2,14 +2,14 @@ import argparse
 import sys
 import pytest
 from unittest import mock
-from scriptmerge.main import main, _parse_args, _open_output
+from scriptmerge.main import main, _parse_args_common, _open_output
 
 # FILE: scriptmerge/test_main.py
 
 
 def test_parse_args_no_args():
     sys.argv = ["scriptmerge"]
-    args = _parse_args()
+    args = _parse_args_common()
     assert args is None
 
 
@@ -31,7 +31,7 @@ def test_parse_args_with_args():
         "-c",
         "-z",
     ]
-    args = _parse_args()
+    args = _parse_args_common()
     assert args.script == "myscript.py"
     assert args.add_python_module == ["module1"]
     assert args.exclude_python_module == ["module2"]

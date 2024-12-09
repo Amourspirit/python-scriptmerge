@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import List, Set
+from typing import Any, List, Set
 import ast
 import os
 import os.path
 import subprocess
 import re
 import io
-import tokenize
 import zipapp
 import tempfile
 import shutil
@@ -31,6 +30,7 @@ def script(
     copy_shebang: bool = False,
     exclude_python_modules: List[str] | None = None,
     clean: bool = False,
+    **kwargs: Any,
 ) -> bytes:
     """
     Generate Script
@@ -43,6 +43,7 @@ def script(
         copy_shebang (bool, optional): Copy Shebang.
         exclude_python_modules (List[str] | None, optional): One or more regular expressions that match Module names to exclude as.
             Such as ["greetings*"]
+        clean (bool, optional): Specifies if the source code should be cleaned. Defaults to False.
 
     Returns:
         str: Python modules compiled into single file contents.
