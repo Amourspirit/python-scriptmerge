@@ -1,16 +1,18 @@
 from __future__ import annotations
-from typing import List, Set
+from typing import Any, List, Set, Callable
 import ast
 import os
 import os.path
 import subprocess
 import re
-
-import io
-import tokenize
+from pathlib import Path
 
 from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
+from scriptmerge.merge_common import EventArgs, CancelEventArgs
+
+CALLBACK_GENERATING_PRELUDE = "GENERATING_PRELUDE"
+
 
 # set a flag to indicate that we are running in the scriptmerge context
 os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
@@ -28,6 +30,8 @@ def script(
     copy_shebang: bool = False,
     exclude_python_modules: List[str] | None = None,
     clean: bool = False,
+    callback: Callable[[Any, EventArgs], None] | None = None,
+    **kwargs: Any,
 ) -> str:
     """
     Generate Script
@@ -40,10 +44,13 @@ def script(
         copy_shebang (bool, optional): Copy Shebang.
         exclude_python_modules (List[str] | None, optional): One or more regular expressions that match Module names to exclude as.
             Such as ["greetings*"]
-
+        clean (bool, optional): Specifies if the source code should be cleaned.
+        callback (Callable[[Any, EventArgs], None] | None, optional): Callback function.
+        **kwargs (Any): Additional arguments.
     Returns:
         str: Python modules compiled into single file contents.
     """
+
     if add_python_modules is None:
         add_python_modules = []
 
@@ -59,11 +66,64 @@ def script(
         + add_python_paths
         + _read_sys_path_from_python_bin(python_binary)
     )
+    if callback is not None:
+        ev_args = EventArgs(
+            name=merge_common.CALLBACK_GENERATED_PYTHON_PATHS, source="script"
+        )
+        event_data = {
+            "python_paths": python_paths,
+            "path": path,
+            "copy": copy_shebang,
+            "clean": clean,
+        }
+        ev_args.event_data = event_data
+        callback("script", ev_args)
+        python_paths = ev_args.event_data.get("python_paths", python_paths)
 
     output = []
 
-    output.append(_generate_shebang(path, copy=copy_shebang))
-    output.append(_prelude())
+    shebang = _generate_shebang(path, copy=copy_shebang)
+
+    if callback is not None:
+        ev_args = CancelEventArgs(
+            name=merge_common.CALLBACK_GENERATED_SHEBANG, source="script"
+        )
+        event_data = {
+            "shebang": shebang,
+            "path": path,
+            "copy": copy_shebang,
+            "clean": clean,
+        }
+        ev_args.event_data = event_data
+        callback("script", ev_args)
+        if ev_args.cancel:
+            shebang = ""
+        else:
+            shebang = ev_args.event_data.get("shebang", shebang)
+
+    if shebang:
+        output.append(shebang)
+
+    prelude = _prelude()
+
+    if callback is not None:
+        cancel_args = CancelEventArgs(name=CALLBACK_GENERATING_PRELUDE, source="script")
+        event_data = {
+            "prelude": prelude,
+            "path": path,
+            "copy": copy_shebang,
+            "clean": clean,
+        }
+        cancel_args.event_data = event_data
+        callback("script", cancel_args)
+        if cancel_args.cancel:
+            prelude = ""
+        else:
+            prelude = cancel_args.event_data.get("prelude", prelude)
+
+    if prelude:
+        output.append(prelude)
+
     output.append(
         _generate_module_writers(
             path,
@@ -71,10 +131,14 @@ def script(
             add_python_modules=add_python_modules,
             exclude_python_modules=_exclude_python_modules,
             clean=clean,
+            callback=callback,
         )
     )
-    with _open_source_file(path) as source_file:
-        output.append(_indent(source_file.read()))
+    # The script will be written directly to the output.
+    source_contents = merge_common.read_str_file(path)
+    shebang_cleaned = merge_common.remove_shebang(source_contents)
+    output.append(_indent(shebang_cleaned))
+
     return "".join(output)
 
 
@@ -119,8 +183,9 @@ def _generate_module_writers(
     add_python_modules: List[str],
     exclude_python_modules: Set[str],
     clean: bool,
+    callback: Callable[[Any, EventArgs], None] | None = None,
 ):
-    generator = ModuleWriterGenerator(sys_path, clean)
+    generator = ModuleWriterGenerator(sys_path, clean, callback=callback)
     generator.generate_for_file(
         path,
         add_python_modules=add_python_modules,
@@ -130,10 +195,17 @@ def _generate_module_writers(
 
 
 class ModuleWriterGenerator(object):
-    def __init__(self, sys_path: str, clean: bool):
+
+    def __init__(
+        self,
+        sys_path: str,
+        clean: bool,
+        callback: Callable[[Any, EventArgs], None] | None = None,
+    ):
         self._sys_path = sys_path
         self._modules = {}
         self._clean = clean
+        self._callback = callback
 
     def build(self):
         output = []
@@ -145,12 +217,40 @@ class ModuleWriterGenerator(object):
             )
         return "".join(output)
 
+    def build_script_merge_items(self, item: ScriptMergeItem):
+        mods = self._modules.copy()
+        self._modules = item.get_build_item()
+        output = self.build()
+        self._modules = mods
+        return output
+
     def generate_for_file(
         self,
         python_file_path: str,
         add_python_modules: List[str],
         exclude_python_modules: Set[str],
-    ):
+    ) -> None:
+        if self._callback is not None:
+            cancel_args = CancelEventArgs(
+                name=merge_common.CALLBACK_GENERATING_FOR_FILE, source=self
+            )
+            event_data = {
+                "path": python_file_path,
+                "add_python_modules": add_python_modules,
+                "exclude_python_modules": exclude_python_modules,
+            }
+            cancel_args.event_data = event_data
+            self._callback(self, cancel_args)
+            if cancel_args.cancel:
+                return
+            python_file_path = cancel_args.event_data.get("path", python_file_path)
+            add_python_modules = cancel_args.event_data.get(
+                "add_python_modules", add_python_modules
+            )
+            exclude_python_modules = cancel_args.event_data.get(
+                "exclude_python_modules", exclude_python_modules
+            )
+
         self._generate_for_module(
             ImportTarget(
                 python_file_path,
@@ -172,12 +272,29 @@ class ModuleWriterGenerator(object):
 
     def _generate_for_module(
         self, python_module: ImportTarget, exclude_python_modules: Set[str]
-    ):
+    ) -> None:
         def is_excluded(line: ImportLine):
             for exclude in exclude_python_modules:
                 if re.match(exclude, line.module_name):
                     return True
             return False
+
+        if self._callback is not None:
+            cancel_args = CancelEventArgs(
+                name=merge_common.CALLBACK_GENERATING_FOR_MODULE, source=self
+            )
+            event_data = {
+                "module": python_module,
+                "exclude_python_modules": exclude_python_modules,
+            }
+            cancel_args.event_data = event_data
+            self._callback(self, cancel_args)
+            if cancel_args.cancel:
+                return
+            python_module = cancel_args.event_data.get("module", python_module)
+            exclude_python_modules = cancel_args.event_data.get(
+                "exclude_python_modules", exclude_python_modules
+            )
 
         import_lines = _find_imports_in_module(python_module)
         for import_line in import_lines:
@@ -191,7 +308,7 @@ class ModuleWriterGenerator(object):
         python_module: ImportTarget,
         import_line: ImportTarget,
         exclude_python_modules: Set[str],
-    ):
+    ) -> None:
         import_targets = self._read_possible_import_targets(python_module, import_line)
 
         for import_target in import_targets:
@@ -230,7 +347,7 @@ class ModuleWriterGenerator(object):
         # ~ else:
         # ~ raise RuntimeError("Could not find module: " + import_line.import_path)
 
-    def _find_module(self, module_name: str):
+    def _find_module(self, module_name: str) -> ImportTarget | None:
         for sys_path in self._sys_path:
             for is_package in (True, False):
                 if is_package:
@@ -293,11 +410,12 @@ def _open_source_file(path: str):
     return open(path, "rt", encoding="utf-8")
 
 
-def _is_stdlib_import(import_line: ImportLine):
+def _is_stdlib_import(import_line: ImportLine) -> bool:
     return is_stdlib_module(import_line.module_name)
 
 
-class ImportTarget(object):
+class ImportTarget:
+
     def __init__(
         self,
         absolute_path: str,
@@ -322,7 +440,30 @@ class ImportTarget(object):
             return file.read()
 
 
-class ImportLine(object):
+class ImportLine:
     def __init__(self, module_name: str, items: List[str]):
         self.module_name = module_name
         self.items = items
+
+
+class ScriptMergeItem:
+    def __init__(self, absolute_path: str, clean: bool):
+        self.absolute_path = absolute_path
+        self.clean = clean
+
+    def _read_binary(self) -> bytes:
+        if self.clean:
+            with open(self.absolute_path, "rt", encoding="utf-8") as file:
+                file_str = merge_common.remove_comments_and_doc_strings(file.read())
+                return file_str.encode("utf-8")
+
+        with open(self.absolute_path, "rb") as file:
+            return file.read()
+
+    def get_build_item(self):
+        module_rel_path = self.absolute_path.split("/")[-1]
+        module_name = module_rel_path.replace(".py", "")
+        return {module_name: (module_rel_path, self._read_binary())}
+
+    def __repr__(self):
+        return f"ScriptMergeItem({self.absolute_path!r}, {self.clean!r})"

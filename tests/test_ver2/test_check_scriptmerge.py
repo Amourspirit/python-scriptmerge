@@ -4,6 +4,11 @@ import sys
 import subprocess
 import pytest
 
+import pytest
+
+if __name__ == "__main__":
+    pytest.main(["-v", __file__])
+
 
 def test_single_file_script_still_works(chk_script_output) -> None:
     chk_script_output(script_path="single_file/hello", expected_output=b"Hello\n")
@@ -20,7 +25,7 @@ def test_stdlib_module_in_package_is_not_generated(chk_script_output) -> None:
     chk_script_output(
         script_path="script_using_stdlib_module_in_package/hello",
         expected_output=b"xml.etree.ElementTree\nHello\n",
-        expected_modules=["greeting"],
+        expected_modules=["__init__", "greeting"],
         python_binary=sys.executable,
     )
 

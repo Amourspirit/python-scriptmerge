@@ -1,3 +1,9 @@
+import pytest
+
+if __name__ == "__main__":
+    pytest.main([__file__])
+
+
 def test_script_using_multi_import_clean(get_script_str) -> None:
     script: str = get_script_str("script_using_multi_import/hello")
     assert script.find("# Message for greeting") > 0
