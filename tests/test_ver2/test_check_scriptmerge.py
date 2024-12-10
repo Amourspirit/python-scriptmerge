@@ -1,7 +1,13 @@
 import os
 import os.path
 import sys
+import subprocess
 import pytest
+
+import pytest
+
+if __name__ == "__main__":
+    pytest.main([__file__])
 
 
 def test_single_file_script_still_works(chk_script_output) -> None:
@@ -19,7 +25,7 @@ def test_stdlib_module_in_package_is_not_generated(chk_script_output) -> None:
     chk_script_output(
         script_path="script_using_stdlib_module_in_package/hello",
         expected_output=b"xml.etree.ElementTree\nHello\n",
-        expected_modules=["__main__", "greeting"],
+        expected_modules=["__init__", "greeting"],
         python_binary=sys.executable,
     )
 
@@ -167,9 +173,11 @@ def test_can_explicitly_set_python_interpreter(
     tmp_path,
 ) -> None:
     venv_path = os.path.join(tmp_path, "venv")
+    subprocess.run(["virtualenv", venv_path])
     # _shell.run(["virtualenv", venv_path])
     run_shell_cmd(["virtualenv", venv_path])
     site_packages_path = find_site_packages(venv_path)
+
     path_path = os.path.join(site_packages_path, "greetings.pth")
     with open(path_path, "w") as path_file:
         path_file.write(find_script("python_path_from_binary/packages\n"))

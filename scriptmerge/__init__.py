@@ -4,8 +4,23 @@ from typing import Any, Callable, List
 __version__ = "2.1.1"
 
 
+from scriptmerge import merge_common as mc
 from scriptmerge.merge_common import EventArgs as EventArgs
 from scriptmerge.merge_common import CancelEventArgs as CancelEventArgs
+from scriptmerge import merge1
+from scriptmerge import merge2
+
+# region Constants for Callbacks
+CALLBACK_GENERATED_SHEBANG = mc.CALLBACK_GENERATED_SHEBANG
+CALLBACK_GENERATING_FOR_MODULE = mc.CALLBACK_GENERATING_FOR_MODULE
+CALLBACK_GENERATING_FOR_FILE = mc.CALLBACK_GENERATING_FOR_FILE
+CALLBACK_GENERATED_PYTHON_PATHS = mc.CALLBACK_GENERATED_PYTHON_PATHS
+CALLBACK_GENERATING_MAIN_PY_FILE = mc.CALLBACK_GENERATING_MAIN_PY_FILE
+CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = mc.CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT
+CALLBACK_GENERATING_PRELUDE = merge1.CALLBACK_GENERATING_PRELUDE
+CALLBACK_GENERATING_INIT_PY_FILE = merge2.CALLBACK_GENERATING_INIT_PY_FILE
+# endregion Constants for Callbacks
+
 
 # _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
 # https://peps.python.org/pep-0263/
@@ -45,14 +60,13 @@ def script(
         str: Python modules compiled into single file contents.
     """
     if pyz_out:
-        import scriptmerge.merge2 as merge
+        subscript = merge2.script
 
         include_main_py = bool(kwargs.get("include_main_py", True))
     else:
-        import scriptmerge.merge1 as merge
-
+        subscript = merge1.script
         include_main_py = bool(kwargs.get("include_main_py", False))
-    return merge.script(
+    return subscript(
         path=path,
         add_python_modules=add_python_modules,
         add_python_paths=add_python_paths,

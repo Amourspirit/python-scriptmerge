@@ -1,3 +1,9 @@
+import pytest
+
+if __name__ == "__main__":
+    pytest.main([__file__])
+
+
 def test_explicit_relative_imports_drop_module(get_script_str) -> None:
     script: str = get_script_str("explicit_relative_import/hello")
     assert script.find("Hello") > 0
@@ -99,7 +105,7 @@ def test_script_using_multi_import_drop(
     chk_script_output(
         script_path="script_import_class/hello",
         expected_output=b"Hello World\n",
-        expected_modules=["greetings.__init__", "greetings.greeting"],
+        expected_modules=["__init__", "greetings.__init__", "greetings.greeting"],
     )
 
     script = get_script_str(

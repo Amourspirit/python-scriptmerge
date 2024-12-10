@@ -8,9 +8,21 @@ from scriptmerge.merge2 import script as merge2_script
 
 # region Main
 def main() -> int:
+    # List of valid subcommands
+    subcommands = set(["version", "compilepy", "compilepyz", "compile_original"])
+
+    # Preprocess sys.argv to insert default subcommand if necessary
+    if len(sys.argv) > 1:
+        if sys.argv[1] not in subcommands:
+            # Insert default subcommand
+            sys.argv.insert(1, "compile_original")
+    else:
+        # No arguments provided; use default subcommand
+        sys.argv.insert(1, "compile_original")
+
     parser = argparse.ArgumentParser()
 
-    subparser = parser.add_subparsers(dest="command", required=True)
+    subparser = parser.add_subparsers(dest="command", required=False)
     cmd_version = subparser.add_parser(
         name="version", help="Gets the version of the scriptmerge"
     )
@@ -32,18 +44,6 @@ def main() -> int:
     # Parse the initial arguments
     args, remaining_args = parser.parse_known_args()
 
-    # Check if a subcommand was provided
-    if args.command is None:
-        # Set default subcommand to 'compile_original'
-        args.command = "compile_original"
-        # Parse the arguments again with the default subparser
-        subparser = {
-            "compilepy": cmd_compile,
-            "compilepyz": cmd_compile_pyz,
-            "compile_original": cmd_compile_orig,
-        }[args.command]
-        args = subparser.parse_args(remaining_args, namespace=args)
-
     if len(sys.argv) <= 1:
         parser.print_help()
         return 0
@@ -62,7 +62,8 @@ def _open_output(args):
             return sys.stdout.buffer
         return sys.stdout
     else:
-        if args.pyz_out:
+        pyz_out = getattr(args, "pyz_out", False)
+        if pyz_out:
             return open(args.output_file, "wb")
         return open(args.output_file, "w")
 
