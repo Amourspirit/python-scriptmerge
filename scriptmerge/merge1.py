@@ -46,13 +46,10 @@ def script(
             Such as ["greetings*"]
         clean (bool, optional): Specifies if the source code should be cleaned.
         callback (Callable[[Any, EventArgs], None] | None, optional): Callback function.
-        include_main_py (bool, optional): Specifies if the script should be written directly to the output or into a __main__.py file. Default is False.
-
+        **kwargs (Any): Additional arguments.
     Returns:
         str: Python modules compiled into single file contents.
     """
-
-    include_main_py = bool(kwargs.get("include_main_py", False))
 
     if add_python_modules is None:
         add_python_modules = []
@@ -86,8 +83,9 @@ def script(
     output = []
 
     shebang = _generate_shebang(path, copy=copy_shebang)
+
     if callback is not None:
-        ev_args = EventArgs(
+        ev_args = CancelEventArgs(
             name=merge_common.CALLBACK_GENERATED_SHEBANG, source="script"
         )
         event_data = {
@@ -98,12 +96,16 @@ def script(
         }
         ev_args.event_data = event_data
         callback("script", ev_args)
-        shebang = ev_args.event_data.get("shebang", shebang)
-    output.append(shebang)
+        if ev_args.cancel:
+            shebang = ""
+        else:
+            shebang = ev_args.event_data.get("shebang", shebang)
+
+    if shebang:
+        output.append(shebang)
 
     prelude = _prelude()
 
-    cancel = False
     if callback is not None:
         cancel_args = CancelEventArgs(name=CALLBACK_GENERATING_PRELUDE, source="script")
         event_data = {
@@ -114,9 +116,12 @@ def script(
         }
         cancel_args.event_data = event_data
         callback("script", cancel_args)
-        prelude = cancel_args.event_data.get("prelude", prelude)
-        cancel = cancel_args.cancel
-    if not cancel:
+        if cancel_args.cancel:
+            prelude = ""
+        else:
+            prelude = cancel_args.event_data.get("prelude", prelude)
+
+    if prelude:
         output.append(prelude)
 
     output.append(
@@ -129,61 +134,10 @@ def script(
             callback=callback,
         )
     )
-    if include_main_py:
-
-        # script will NOT be written directly to the output.
-        # Instead contents are written into __main__.py file.
-        with _open_source_file(path) as source_file:
-            with merge_common.temp_file_manager(
-                source_file.read(), "__main__.py"
-            ) as temp_file:
-                file_path = temp_file
-                tmpdir = Path(file_path).parent
-                if callback is not None:
-                    # This event give a chance to modify the path of the __main__.py file.
-                    # If the user wishes to write the script of a different file then this is the event to do it.
-                    ev_args = EventArgs(
-                        name=merge_common.CALLBACK_GENERATING_MAIN_PY_FILE,
-                        source="script",
-                    )
-                    event_data = {
-                        "dir": str(tmpdir),
-                        "path": path,
-                        "clean": clean,
-                    }
-                    ev_args.event_data = event_data
-                    callback("script", ev_args)
-                    file_path = (
-                        Path(ev_args.event_data.get("dir", tmpdir)) / "__main__.py"
-                    )
-                    if not isinstance(file_path, str):
-                        file_path = str(file_path)
-
-                merge_item = ScriptMergeItem(file_path, clean)
-                module_gen = ModuleWriterGenerator("", clean)
-                build_contents = module_gen.build_script_merge_items(merge_item)
-                if callback is not None:
-                    # if the user wants to modify the contents of the __main__.py file or append to it then
-                    # this is the event to do it.
-                    ev_args = EventArgs(
-                        name=merge_common.CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT,
-                        source="script",
-                    )
-                    event_data = {
-                        "contents": build_contents,
-                        "path": path,
-                        "clean": clean,
-                    }
-                    ev_args.event_data = event_data
-                    callback("script", ev_args)
-                    build_contents = ev_args.event_data.get("contents", build_contents)
-                output.append(build_contents)
-    else:
-        # if canceled then go back to ver 2 behavior
-        # there will be no __main__.py file.
-        # The script will be written directly to the output.
-        with _open_source_file(path) as source_file:
-            output.append(_indent(source_file.read()))
+    # The script will be written directly to the output.
+    source_contents = merge_common.read_str_file(path)
+    shebang_cleaned = merge_common.remove_shebang(source_contents)
+    output.append(_indent(shebang_cleaned))
 
     return "".join(output)
 
@@ -287,7 +241,7 @@ class ModuleWriterGenerator(object):
             }
             cancel_args.event_data = event_data
             self._callback(self, cancel_args)
-            if cancel_args.canceled:
+            if cancel_args.cancel:
                 return
             python_file_path = cancel_args.event_data.get("path", python_file_path)
             add_python_modules = cancel_args.event_data.get(
@@ -335,7 +289,7 @@ class ModuleWriterGenerator(object):
             }
             cancel_args.event_data = event_data
             self._callback(self, cancel_args)
-            if cancel_args.canceled:
+            if cancel_args.cancel:
                 return
             python_module = cancel_args.event_data.get("module", python_module)
             exclude_python_modules = cancel_args.event_data.get(

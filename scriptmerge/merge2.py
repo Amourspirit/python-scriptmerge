@@ -15,6 +15,8 @@ import scriptmerge.merge_common as merge_common
 from scriptmerge.merge_common import EventArgs, CancelEventArgs
 
 CALLBACK_GENERATING_INIT_PY_FILE = "GENERATING_INIT_PY_FILE"
+CALLBACK_GENERATING_MAIN_PY_FILE = "GENERATING_MAIN_PY_FILE"
+CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = "GENERATED_MAIN_PY_FILE_CONTENT"
 
 
 # set a flag to indicate that we are running in the scriptmerge context
@@ -49,13 +51,10 @@ def script(
             Such as ["greetings*"]
         clean (bool, optional): Specifies if the source code should be cleaned. Defaults to False.
         callback (Callable[[Any, EventArgs], None] | None, optional): Callback function.
-        include_main_py (bool, optional): Specifies if the script should be written directly to the output or into a __main__.py file. Default is True.
 
     Returns:
         str: Python modules compiled into single file contents.
     """
-
-    include_main_py = bool(kwargs.get("include_main_py", True))
 
     if add_python_modules is None:
         add_python_modules = []
@@ -87,52 +86,79 @@ def script(
         callback("script", ev_args)
         python_paths = ev_args.event_data.get("python_paths", python_paths)
 
+    shebang = _generate_interpreter(path, copy=copy_shebang)
+    if callback is not None:
+        ev_args = CancelEventArgs(
+            name=merge_common.CALLBACK_GENERATED_SHEBANG, source="script"
+        )
+        event_data = {
+            "shebang": shebang,
+            "path": path,
+            "copy": copy_shebang,
+            "clean": clean,
+        }
+        ev_args.event_data = event_data
+        callback("script", ev_args)
+        if ev_args.cancel:
+            shebang = None
+        else:
+            shebang = ev_args.event_data.get("shebang", shebang)
+            if shebang.startswith("#!"):
+                shebang = str(shebang[2:]).lstrip()
+
+    source_contents = merge_common.read_str_file(path)
+    shebang_src = merge_common.remove_shebang(source_contents)
+    if shebang:
+        gen_shebang_src = f"#!{shebang}\n" + shebang_src
+    else:
+        gen_shebang_src = shebang_src
+
     with tempfile.TemporaryDirectory() as archive_dir:
-        if include_main_py:
-            canceled = False
-            if callback is not None:
-                # This event give a chance to modify the path of the __main__.py file.
-                # If the user wishes to write the script of a different file then this is the event to do it.
-                ev_args = CancelEventArgs(
-                    name=merge_common.CALLBACK_GENERATING_MAIN_PY_FILE,
-                    source="script",
-                )
-                event_data = {
-                    "dir": archive_dir,
-                    "path": path,
-                    "clean": clean,
-                }
-                ev_args.event_data = event_data
-                callback("script", ev_args)
-                canceled = ev_args.canceled
+        if callback is not None:
+            # This event give a chance to modify the path of the __main__.py file.
+            # If the user wishes to write the script of a different file then this is the event to do it.
+            # Note that __main__py is required for a pyz file or it will not build.
+            ev_args = EventArgs(
+                name=CALLBACK_GENERATING_MAIN_PY_FILE,
+                source="script",
+            )
+            event_data = {
+                "dir": archive_dir,
+                "path": path,
+                "clean": clean,
+            }
+            ev_args.event_data = event_data
+            callback("script", ev_args)
 
-            if not canceled:
-                shutil.copyfile(path, os.path.join(archive_dir, "__main__.py"))
+        merge_common.write_str_file(
+            os.path.join(archive_dir, "__main__.py"), gen_shebang_src
+        )
 
-            if callback is not None:
+        # shutil.copyfile(path, os.path.join(archive_dir, "__main__.py"))
+
+        with open(os.path.join(archive_dir, "__main__.py"), "r", encoding="utf-8") as f:
+            build_contents = f.read()
+
+        if callback is not None:
+            # if the user wants to modify the contents of the __main__.py file or append to it then
+            # this is the event to do it.
+            ev_args = EventArgs(
+                name=CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT,
+                source="script",
+            )
+            event_data = {
+                "contents": build_contents,
+                "path": path,
+                "clean": clean,
+            }
+            ev_args.event_data = event_data
+            callback("script", ev_args)
+            contents = ev_args.event_data.get("contents", build_contents)
+            if contents != build_contents:
                 with open(
-                    os.path.join(archive_dir, "__main__.py"), "r", encoding="utf-8"
+                    os.path.join(archive_dir, "__main__.py"), "w", encoding="utf-8"
                 ) as f:
-                    build_contents = f.read()
-                # if the user wants to modify the contents of the __main__.py file or append to it then
-                # this is the event to do it.
-                ev_args = EventArgs(
-                    name=merge_common.CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT,
-                    source="script",
-                )
-                event_data = {
-                    "contents": build_contents,
-                    "path": path,
-                    "clean": clean,
-                }
-                ev_args.event_data = event_data
-                callback("script", ev_args)
-                contents = ev_args.event_data.get("contents", build_contents)
-                if contents != build_contents:
-                    with open(
-                        os.path.join(archive_dir, "__main__.py"), "w", encoding="utf-8"
-                    ) as f:
-                        f.write(contents)
+                    f.write(contents)
 
         init_file_path = os.path.join(archive_dir, "__init__.py")
         contents = ""
@@ -175,25 +201,11 @@ def script(
                 shutil.copyfile(module.absolute_path, archive_module_path)
 
         output = io.BytesIO()
-        shebang = _generate_interpreter(path, copy=copy_shebang)
-        if callback is not None:
-            ev_args = EventArgs(
-                name=merge_common.CALLBACK_GENERATED_SHEBANG, source="script"
-            )
-            event_data = {
-                "shebang": shebang,
-                "path": path,
-                "copy": copy_shebang,
-                "clean": clean,
-            }
-            ev_args.event_data = event_data
-            callback("script", ev_args)
-            shebang = ev_args.event_data.get("shebang", shebang)
 
         zipapp.create_archive(
             source=archive_dir,
             target=output,
-            interpreter=shebang,
+            interpreter=shebang,  # this does not seem to make any difference when returning output.getvalue()
         )
         return output.getvalue()
 
@@ -264,7 +276,7 @@ class ModuleWriterGenerator:
             }
             cancel_args.event_data = event_data
             self._callback(self, cancel_args)
-            if cancel_args.canceled:
+            if cancel_args.cancel:
                 return
             python_file_path = cancel_args.event_data.get("path", python_file_path)
             add_python_modules = cancel_args.event_data.get(
@@ -311,7 +323,7 @@ class ModuleWriterGenerator:
             }
             cancel_args.event_data = event_data
             self._callback(self, cancel_args)
-            if cancel_args.canceled:
+            if cancel_args.cancel:
                 return
             python_module = cancel_args.event_data.get("module", python_module)
             exclude_python_modules = cancel_args.event_data.get(

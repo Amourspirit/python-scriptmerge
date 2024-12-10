@@ -1,7 +1,10 @@
+from __future__ import annotations
 import pytest
 import os
 import platform
 from test_scripts import root as test_script_root
+import zipfile
+from pathlib import Path
 
 
 @pytest.fixture(scope="session")
@@ -47,3 +50,28 @@ def venv_python_binary_path(is_windows):
         return os.path.join(venv_path, bin_directory, "python")
 
     return _venv_python_binary_path
+
+
+@pytest.fixture
+def unzip_file_in_tmp(tmp_path):
+    def _unzip_file(zip_path):
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(tmp_path)
+        return tmp_path
+
+    return _unzip_file
+
+
+@pytest.fixture
+def write_file_tmp(tmp_path):
+    def _write_file_tmp(file_name: str | Path, contents: str | bytes):
+        file_path = tmp_path / file_name
+        if isinstance(contents, bytes):
+            mode = "wb"
+        else:
+            mode = "w"
+        with open(file_path, mode) as file:
+            file.write(contents)
+        return str(file_path)
+
+    return _write_file_tmp

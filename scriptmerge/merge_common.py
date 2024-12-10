@@ -12,8 +12,6 @@ CALLBACK_GENERATED_SHEBANG = "GENERATED_SHEBANG"
 CALLBACK_GENERATING_FOR_MODULE = "GENERATING_FOR_MODULE"
 CALLBACK_GENERATING_FOR_FILE = "GENERATING_FOR_FILE"
 CALLBACK_GENERATED_PYTHON_PATHS = "GENERATED_PYTHON_PATHS"
-CALLBACK_GENERATING_MAIN_PY_FILE = "GENERATING_MAIN_PY_FILE"
-CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = "GENERATED_MAIN_PY_FILE_CONTENT"
 
 
 def remove_comments_and_doc_strings(source: str) -> str:
@@ -89,6 +87,33 @@ def remove_comments_and_doc_strings(source: str) -> str:
     return result
 
 
+def remove_shebang(source: str) -> str:
+    """
+    Removes Shebang from source if it exists.
+    """
+    if source.startswith("#!"):
+        index = source.find("\n")
+        if index != -1:
+            source = source[index + 1 :].lstrip()
+    return source
+
+
+def read_str_file(file_path: str | Path) -> str:
+    """
+    Reads a file and returns its content as string.
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def write_str_file(file_path: str | Path, content: str) -> None:
+    """
+    Writes content to a file.
+    """
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
 class EventArgs:
     """
     Event Arguments Class
@@ -101,7 +126,7 @@ class EventArgs:
         Args:
             source (Any): Event Source
         """
-        self.name = ""
+        self.name = name
         self.source = source
         self.event_data = None
 

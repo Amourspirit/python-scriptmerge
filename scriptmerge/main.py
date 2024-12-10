@@ -4,6 +4,7 @@ import sys
 from scriptmerge import __version__
 from scriptmerge.merge1 import script as merge1_script
 from scriptmerge.merge2 import script as merge2_script
+import os
 
 
 # region Main
@@ -53,22 +54,13 @@ def main() -> int:
 
 # endregion Main
 
-# region Output
+
+# region helper methods
+def is_posix() -> bool:
+    return os.pathsep == ":"
 
 
-def _open_output(args):
-    if args.output_file is None:
-        if args.pyz_out:
-            return sys.stdout.buffer
-        return sys.stdout
-    else:
-        pyz_out = getattr(args, "pyz_out", False)
-        if pyz_out:
-            return open(args.output_file, "wb")
-        return open(args.output_file, "w")
-
-
-# endregion Output
+# endregion helper methods
 
 
 # region Argument parsing
@@ -143,6 +135,13 @@ def _parse_args_common(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Remove docstring and comments from the script",
     )
+    if is_posix():
+        parser.add_argument(
+            "-x",
+            "--make-executable",
+            action="store_true",
+            help="Make the output file executable",
+        )
 
     # if len(sys.argv) <= 1:
     #     parser.print_help()
@@ -166,7 +165,6 @@ def _args_process_cmd(args: argparse.Namespace) -> int:
 
 
 def _args_compile_default_action(args: argparse.Namespace) -> int:
-    output_file = _open_output(args)
     output = merge1_script(
         args.script,
         add_python_modules=args.add_python_module,
@@ -175,14 +173,16 @@ def _args_compile_default_action(args: argparse.Namespace) -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
-        pyz_out=args.pyz_out,
     )
-    output_file.write(output)
+    with open(args.output_file, "w") as output_file:
+        output_file.write(output)
+    make_executable = getattr(args, "make_executable", False)  # only posix
+    if make_executable:
+        os.chmod(args.output_file, 0o755)
     return 0
 
 
 def _args_compile_py_action(args: argparse.Namespace) -> int:
-    output_file = _open_output(args)
     output = merge1_script(
         args.script,
         add_python_modules=args.add_python_module,
@@ -191,15 +191,18 @@ def _args_compile_py_action(args: argparse.Namespace) -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
-        pyz_out=args.pyz_out,
         include_main_py=args.main_py,
     )
-    output_file.write(output)
+    with open(args.output_file, "w") as output_file:
+        output_file.write(output)
+    make_executable = getattr(args, "make_executable", False)  # only posix
+    if make_executable:
+        os.chmod(args.output_file, 0o755)
     return 0
 
 
 def _args_compile_pyz_action(args: argparse.Namespace) -> int:
-    output_file = _open_output(args)
+    # output_file = _open_output(args)
     output = merge2_script(
         args.script,
         add_python_modules=args.add_python_module,
@@ -208,10 +211,14 @@ def _args_compile_pyz_action(args: argparse.Namespace) -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
-        pyz_out=args.pyz_out,
         include_main_py=args.no_main_py,
     )
-    output_file.write(output)
+    # output_file.write(output)
+    with open(args.output_file, "wb") as output_file:
+        output_file.write(output)
+    make_executable = getattr(args, "make_executable", False)  # only posix
+    if make_executable:
+        os.chmod(args.output_file, 0o755)
     return 0
 
 

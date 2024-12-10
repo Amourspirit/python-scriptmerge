@@ -5,19 +5,15 @@ Convert Python packages into a single script as a standalone `.py` file or a `.p
 Scriptmerge can be used to convert a Python script and any Python modules
 it depends on into a single-file Python script.
 
-If you want to create a single file that can be executed by a Python interpreter,
-  use the `-z` or `--pyz-out` flag which outputs a [zipapp](https://docs.python.org/3/library/zipapp.html) `.pyz` file.
+If you want output to be a `.py` file can use the `compilepy` command which outputs a `.py` file.
+If you want output to be a `.pyz` file can use the `compilepyz` command which outputs a `.pyz` file.
 
-The `--pyz-out` flag was introduced in verson `2.1.0`.
+The `.pyz` is a [zipapp](https://docs.python.org/3/library/zipapp.html) `.pyz` file.
+It is recommended to use the `.pyz` file as it is a more modern way to distribute Python applications and it is faster to build and to load.
 
-There are likely better alternatives depending on what you're trying to do.
-For instance:
+I also recommend checking out [PyInstaller](http://www.pyinstaller.org/).
 
-
-* If you need to create a standalone executable from your Python script,
-  I recommend using an alternative such as [PyInstaller](http://www.pyinstaller.org/).
-
-Since scriptmerge relies on correctly analysing both your script and any dependent modules,
+Since scriptmerge relies on correctly analyzing both your script and any dependent modules,
 it may not work correctly in all circumstances.
 
 
@@ -33,27 +29,27 @@ You can tell scriptmerge which directories to search using the `--add-python-pat
 For instance:
 
 ```sh
-scriptmerge scripts/blah --add-python-path . > /tmp/blah-standalone
+scriptmerge compilepyz scripts/blah --add-python-path . > /tmp/blah-standalone
 ```
 
 Or to output directly to a file:
 
 ```sh
-scriptmerge scripts/blah --add-python-path . --output-file /tmp/blah-standalone
+scriptmerge compilepy scripts/blah --add-python-path . --output-file /tmp/blah-standalone
 ```
 
 You can also point scriptmerge towards a Python binary that it should use
 sys.path from, for instance the Python binary inside a virtualenv:
 
 ```sh
-scriptmerge scripts/blah --python-binary _virtualenv/bin/python --output-file /tmp/blah-standalone
+scriptmerge compilepyz scripts/blah --python-binary _virtualenv/bin/python --output-file /tmp/blah-standalone
 ```
 
 Scriptmerge cannot automatically detect dynamic imports,
 but you can use `--add-python-module` to explicitly include modules:
 
 ```sh
-scriptmerge scripts/blah --add-python-module blah.util
+scriptmerge compilepyz scripts/blah --add-python-module blah.util
 ```
 
 Scriptmerge can exclucde modules from be added to output.
@@ -67,7 +63,7 @@ In this example module `blah` is excluded entirly.
 `blah\.*` matches modules such as `blah.__init__`, `blah.my_sub_module`.
 
 ```sh
-scriptmerge scripts/blah --exclude-python-module blah\.*
+scriptmerge compilepyz scripts/blah --exclude-python-module blah\.*
 ```
 
 By default, scriptmerge will ignore the shebang in the script
@@ -76,7 +72,7 @@ To copy the shebang from the original script,
 use `--copy-shebang`:
 
 ```sh
-scriptmerge scripts/blah --copy-shebang --output-file /tmp/blah-standalone
+scriptmerge compilepy scripts/blah --copy-shebang --output-file /tmp/blah-standalone
 ```
 
 Scritpmerge can strip all doc strings and comments from imported modules using the `--clean` option.
@@ -88,7 +84,7 @@ scriptmerge --clean
 Scriptmerge by default will output a `.py` file. If you want to output a `.pyz` file, use the `--pyz-out` flag.
 
 ```sh
-scriptmerge scripts/blah --pyz-out --output-file /tmp/blah-standalone.pyz
+scriptmerge compilepy scripts/blah --pyz-out --output-file /tmp/blah-standalone.pyz
 ```
 
 To see all scriptmerge options:
@@ -105,7 +101,7 @@ few caveats:
   its encoding in its first two lines, then it will be UTF-8 by default
   as of Python 3.
 
-* Your script shouldn't have any ``from __future__`` imports.
+* When using `compilepy` Your script shouldn't have any ``from __future__`` imports.
 
 * Anything that relies on the specific location of files will probably
   no longer work. In other words, ``__file__`` probably isn't all that

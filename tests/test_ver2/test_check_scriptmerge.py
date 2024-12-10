@@ -7,7 +7,7 @@ import pytest
 import pytest
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    pytest.main(["-v", __file__])
 
 
 def test_single_file_script_still_works(chk_script_output) -> None:
