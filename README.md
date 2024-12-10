@@ -16,6 +16,10 @@ I also recommend checking out [PyInstaller](http://www.pyinstaller.org/).
 Since scriptmerge relies on correctly analyzing both your script and any dependent modules,
 it may not work correctly in all circumstances.
 
+## Documentation
+
+See the [documentation](https://github.com/Amourspirit/python-scriptmerge/wiki/) for more information.
+
 
 ## Installation
 
