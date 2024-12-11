@@ -24,6 +24,7 @@ os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
 def script(
     path: str,
+    *,
     add_python_modules: List[str] | None = None,
     add_python_paths: List[str] = None,
     python_binary: str | None = None,
@@ -38,14 +39,14 @@ def script(
 
     Args:
         path (str): Path to entry point py file
-        add_python_modules (List[str] | None, optional): Extra Python modules to include.
+        add_python_modules (List[str], optional): Extra Python modules to include.
         add_python_paths (List[str], optional): Extra Python paths used to search for modules.
-        python_binary (str | None, optional): Path to any binary to include.
-        copy_shebang (bool, optional): Copy Shebang.
-        exclude_python_modules (List[str] | None, optional): One or more regular expressions that match Module names to exclude as.
-            Such as ["greetings*"]
+        python_binary (str, optional): Path to any binary to include.
+        copy_shebang (bool, optional): Copy Shebang. Defaults to False.
+        exclude_python_modules (List[str], optional): One or more regular expressions that match Module names to exclude as.
+            Such as ["__init__", "greetings*"]
         clean (bool, optional): Specifies if the source code should be cleaned.
-        callback (Callable[[Any, EventArgs], None] | None, optional): Callback function.
+        callback (Callable[[Any, EventArgs], None], optional): Callback function.
         **kwargs (Any): Additional arguments.
     Returns:
         str: Python modules compiled into single file contents.
@@ -99,7 +100,12 @@ def script(
         if ev_args.cancel:
             shebang = ""
         else:
-            shebang = ev_args.event_data.get("shebang", shebang)
+            shebang: str = ev_args.event_data.get("shebang", shebang)
+            if shebang:
+                if not shebang.startswith("#!"):
+                    shebang = "#!" + shebang
+                if not shebang.endswith("\n"):
+                    shebang += "\n"
 
     if shebang:
         output.append(shebang)

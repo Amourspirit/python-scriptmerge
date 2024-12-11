@@ -2,8 +2,8 @@ import argparse
 import sys
 
 from scriptmerge import __version__
-from scriptmerge.merge1 import script as merge1_script
-from scriptmerge.merge2 import script as merge2_script
+from scriptmerge.merge_py import script as mergepy_script
+from scriptmerge.merge_pyz import script as mergepyz_script
 import os
 
 
@@ -111,7 +111,7 @@ def _args_process_cmd(args: argparse.Namespace) -> int:
 
 
 def _args_compile_default_action(args: argparse.Namespace) -> int:
-    output = merge1_script(
+    output = mergepy_script(
         args.script,
         add_python_modules=args.add_python_module,
         add_python_paths=args.add_python_path,
@@ -129,7 +129,7 @@ def _args_compile_default_action(args: argparse.Namespace) -> int:
 
 
 def _args_compile_py_action(args: argparse.Namespace) -> int:
-    output = merge1_script(
+    output = mergepy_script(
         args.script,
         add_python_modules=args.add_python_module,
         add_python_paths=args.add_python_path,
@@ -148,7 +148,7 @@ def _args_compile_py_action(args: argparse.Namespace) -> int:
 
 def _args_compile_pyz_action(args: argparse.Namespace) -> int:
     # output_file = _open_output(args)
-    output = merge2_script(
+    output = mergepyz_script(
         args.script,
         add_python_modules=args.add_python_module,
         add_python_paths=args.add_python_path,

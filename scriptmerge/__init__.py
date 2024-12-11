@@ -7,18 +7,20 @@ __version__ = "3.0.1"
 from scriptmerge import merge_common as mc
 from scriptmerge.merge_common import EventArgs as EventArgs
 from scriptmerge.merge_common import CancelEventArgs as CancelEventArgs
-from scriptmerge import merge1
-from scriptmerge import merge2
+from scriptmerge import merge_py as merge_py
+from scriptmerge import merge_pyz as merge_pyz
 
 # region Constants for Callbacks
 CALLBACK_GENERATED_SHEBANG = mc.CALLBACK_GENERATED_SHEBANG
 CALLBACK_GENERATING_FOR_MODULE = mc.CALLBACK_GENERATING_FOR_MODULE
 CALLBACK_GENERATING_FOR_FILE = mc.CALLBACK_GENERATING_FOR_FILE
 CALLBACK_GENERATED_PYTHON_PATHS = mc.CALLBACK_GENERATED_PYTHON_PATHS
-CALLBACK_GENERATING_PRELUDE = merge1.CALLBACK_GENERATING_PRELUDE
-CALLBACK_GENERATING_INIT_PY_FILE = merge2.CALLBACK_GENERATING_INIT_PY_FILE
-CALLBACK_GENERATING_MAIN_PY_FILE = merge2.CALLBACK_GENERATING_MAIN_PY_FILE
-CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = merge2.CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT
+CALLBACK_GENERATING_PRELUDE = merge_py.CALLBACK_GENERATING_PRELUDE
+CALLBACK_GENERATING_INIT_PY_FILE = merge_pyz.CALLBACK_GENERATING_INIT_PY_FILE
+CALLBACK_GENERATING_MAIN_PY_FILE = merge_pyz.CALLBACK_GENERATING_MAIN_PY_FILE
+CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = (
+    merge_pyz.CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT
+)
 # endregion Constants for Callbacks
 
 
@@ -52,19 +54,16 @@ def script(
         clean (bool, optional): Remove comments and doc strings. Defaults to False.
         pyz_out (bool, optional): Specifies if the script should be written as a binary pyz file. Defaults to False.
         callback (Callable[[Any, EventArgs], None] | None, optional): Callback function.
-        include_main_py (bool, optional): Specifies if the script should be written directly to the output or into a __main__.py file.
-            When ``pyz_out`` is True Default is True; Otherwise, Default is False.
-
 
     Returns:
         str: Python modules compiled into single file contents.
     """
     if pyz_out:
-        subscript = merge2.script
+        subscript = merge_pyz.script
 
         include_main_py = bool(kwargs.get("include_main_py", True))
     else:
-        subscript = merge1.script
+        subscript = merge_py.script
         include_main_py = bool(kwargs.get("include_main_py", False))
     return subscript(
         path=path,

@@ -6,7 +6,7 @@ from pathlib import Path
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
 import scriptmerge
-from scriptmerge.merge2 import script
+from scriptmerge.merge_pyz import script
 
 
 def test_cb_python_paths(find_script):
@@ -25,7 +25,7 @@ def test_cb_python_paths(find_script):
             event_triggered = True
 
     script_path: str = find_script("single_file/hello")
-    _ = script(
+    _ = scriptmerge.merge_pyz.script(
         path=script_path,
         add_python_paths=paths,
         callback=cb,
