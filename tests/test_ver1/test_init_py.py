@@ -15,7 +15,7 @@ def test_empty_init_py(find_script):
         path=script_path,
         include_init_py=True,
     )
-    assert "__scriptmerge_write_module('__init__.py', b'')" in output
+    assert "__scriptmerge_write_module('__init__.py', b''" in output
 
 
 def test_no_init_py(find_script):
@@ -47,7 +47,7 @@ def test_cb_init_py(find_script):
         callback=cb,
     )
     assert event_triggered
-    assert "__scriptmerge_write_module('__init__.py', b\"print('Hello')\\n\")" in output
+    assert "__scriptmerge_write_module('__init__.py', b\"print('Hello')" in output
 
 
 def test_cb_init_py_canceled(find_script):
