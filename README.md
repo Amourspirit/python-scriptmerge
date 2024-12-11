@@ -33,7 +33,7 @@ You can tell scriptmerge which directories to search using the `--add-python-pat
 For instance:
 
 ```sh
-scriptmerge compilepyz scripts/blah --add-python-path . > /tmp/blah-standalone
+scriptmerge compilepy scripts/blah --add-python-path . > /tmp/blah-standalone
 ```
 
 Or to output directly to a file:
@@ -83,12 +83,6 @@ Scritpmerge can strip all doc strings and comments from imported modules using t
 
 ```sh
 scriptmerge --clean
-```
-
-Scriptmerge by default will output a `.py` file. If you want to output a `.pyz` file, use the `--pyz-out` flag.
-
-```sh
-scriptmerge compilepy scripts/blah --pyz-out --output-file /tmp/blah-standalone.pyz
 ```
 
 To see all scriptmerge options:

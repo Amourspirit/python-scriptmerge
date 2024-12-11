@@ -29,6 +29,7 @@ os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
 def script(
     path: str,
+    *,
     add_python_modules: List[str] | None = None,
     add_python_paths: List[str] = None,
     python_binary: str | None = None,
@@ -43,17 +44,17 @@ def script(
 
     Args:
         path (str): Path to entry point py file
-        add_python_modules (List[str] | None, optional): Extra Python modules to include.
+        add_python_modules (List[str], optional): Extra Python modules to include.
         add_python_paths (List[str], optional): Extra Python paths used to search for modules.
-        python_binary (str | None, optional): Path to any binary to include.
+        python_binary (str, optional): Path to any binary to include.
         copy_shebang (bool, optional): Copy Shebang.
-        exclude_python_modules (List[str] | None, optional): One or more regular expressions that match Module names to exclude as.
-            Such as ["greetings*"]
+        exclude_python_modules (List[str], optional): One or more regular expressions that match Module names to exclude as.
+            Such as ["__init__", "greetings*"]
         clean (bool, optional): Specifies if the source code should be cleaned. Defaults to False.
-        callback (Callable[[Any, EventArgs], None] | None, optional): Callback function.
+        callback (Callable[[Any, EventArgs], None], optional): Callback function.
 
     Returns:
-        str: Python modules compiled into single file contents.
+        bytes: Python modules compiled into bytes.
     """
 
     if add_python_modules is None:

@@ -6,7 +6,7 @@ from pathlib import Path
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
 import scriptmerge
-from scriptmerge.merge1 import script
+from scriptmerge.merge_py import script
 
 
 def test_cb_python_paths(find_script):
@@ -93,7 +93,7 @@ def test_cb_generated_shebang_canceled(find_script, write_file_tmp):
 
 
 def test_cb_generating_prelude(find_script, write_file_tmp):
-    from scriptmerge.merge1 import _prelude
+    from scriptmerge.merge_py import _prelude
 
     script_path: str = find_script("explicit_relative_import_from_parent_package/hello")
     event_triggered = False
