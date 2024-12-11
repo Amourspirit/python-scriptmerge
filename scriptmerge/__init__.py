@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Callable, List
 import os
 
-__version__ = "3.0.1"
+__version__ = "3.1.0"
 
 
 from scriptmerge import merge_common as mc
