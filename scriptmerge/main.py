@@ -7,54 +7,6 @@ from scriptmerge.merge2 import script as merge2_script
 import os
 
 
-# region Main
-def main() -> int:
-    # List of valid subcommands
-    subcommands = set(["version", "compilepy", "compilepyz", "compile_original"])
-
-    # Preprocess sys.argv to insert default subcommand if necessary
-    if len(sys.argv) > 1:
-        if sys.argv[1] not in subcommands:
-            # Insert default subcommand
-            sys.argv.insert(1, "compile_original")
-    else:
-        # No arguments provided; use default subcommand
-        sys.argv.insert(1, "compile_original")
-
-    parser = argparse.ArgumentParser()
-
-    subparser = parser.add_subparsers(dest="command", required=False)
-    cmd_version = subparser.add_parser(
-        name="version", help="Gets the version of the scriptmerge"
-    )
-    cmd_compile = subparser.add_parser(
-        name="compilepy", help="compile into a single '.py' file"
-    )
-
-    cmd_compile_pyz = subparser.add_parser(
-        name="compilepyz", help="compile into a single '.pyz' file"
-    )
-    cmd_compile_orig = subparser.add_parser(
-        name="compile_original",
-        help="compile into a single '.py' or '.pyz' file. Backwards compatibility. Recommended to use 'compilepy' or 'compilepyz'",
-    )
-    _args_compile_pyz(cmd_compile_pyz)
-    _args_compile_py(cmd_compile)
-    _args_compile_original(cmd_compile_orig)
-
-    # Parse the initial arguments
-    args, remaining_args = parser.parse_known_args()
-
-    if len(sys.argv) <= 1:
-        parser.print_help()
-        return 0
-    _args_process_cmd(args)
-    return 0
-
-
-# endregion Main
-
-
 # region helper methods
 def is_posix() -> bool:
     return os.pathsep == ":"
@@ -66,22 +18,16 @@ def is_posix() -> bool:
 # region Argument parsing
 def _args_compile_pyz(parser: argparse.ArgumentParser) -> None:
     _parse_args_common(parser)
-    parser.add_argument(
-        "-n",
-        "--no-main-py",
-        action="store_false",
-        help="Include '__main__.py' file in the output. Default is True.",
-    )
+    # parser.add_argument(
+    #     "-n",
+    #     "--no-main-py",
+    #     action="store_false",
+    #     help="Include '__main__.py' file in the output. Default is True.",
+    # )
 
 
 def _args_compile_py(parser: argparse.ArgumentParser) -> None:
     _parse_args_common(parser)
-    parser.add_argument(
-        "-y",
-        "--main-py",
-        action="store_true",
-        help="Include '__main__.py' file in the output. Default is False.",
-    )
 
 
 def _args_compile_original(parser: argparse.ArgumentParser) -> None:
@@ -121,7 +67,7 @@ def _parse_args_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "-o",
         "--output-file",
-        help="Output file such as script.py or script.pyz when using -z",
+        help="Output file",
     )
     parser.add_argument(
         "-s",
@@ -191,7 +137,6 @@ def _args_compile_py_action(args: argparse.Namespace) -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
-        include_main_py=args.main_py,
     )
     with open(args.output_file, "w") as output_file:
         output_file.write(output)
@@ -211,7 +156,6 @@ def _args_compile_pyz_action(args: argparse.Namespace) -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
-        include_main_py=args.no_main_py,
     )
     # output_file.write(output)
     with open(args.output_file, "wb") as output_file:
@@ -223,6 +167,69 @@ def _args_compile_pyz_action(args: argparse.Namespace) -> int:
 
 
 # endregion Argument actions
+
+
+# region Main
+def _main() -> int:
+    # debugging only
+    args = [sys.argv[0]]
+    sys.argv.clear()
+    args.extend(["compilepyz", "--help"])
+    sys.argv.extend(args)
+    return main()
+
+
+def main() -> int:
+    # List of valid subcommands
+    subcommands = set(
+        ["version", "compilepy", "compilepyz", "compile_original", "-h", "--help"]
+    )
+    # subcommands = set(["version", "compilepy", "compilepyz", "compile_original"])
+
+    # Preprocess sys.argv to insert default subcommand if necessary
+    if len(sys.argv) > 1:
+        if sys.argv[1] not in subcommands:
+            # Insert default subcommand
+            sys.argv.insert(1, "compile_original")
+    # else:
+    #     # No arguments provided; use default subcommand
+    #     sys.argv.insert(1, "compile_original")
+
+    parser = argparse.ArgumentParser()
+
+    subparsers = parser.add_subparsers(dest="command", required=False)
+    _ = subparsers.add_parser(
+        name="version", help="Gets the version of the scriptmerge"
+    )
+
+    cmd_compile_orig = subparsers.add_parser(
+        name="compile_original",
+        help="compile into a single '.py' or '.pyz' file. Backwards compatibility. Recommended to use 'compilepy' or 'compilepyz'",
+    )
+    _args_compile_original(cmd_compile_orig)
+
+    cmd_compile = subparsers.add_parser(
+        name="compilepy", help="compile into a single '.py' file"
+    )
+    _args_compile_py(cmd_compile)
+
+    cmd_compile_pyz = subparsers.add_parser(
+        name="compilepyz", help="compile into a single '.pyz' file"
+    )
+    _args_compile_pyz(cmd_compile_pyz)
+
+    # Parse the initial arguments
+    # args, remaining_args = parser.parse_known_args()
+    args = parser.parse_args()
+
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        return 0
+    _args_process_cmd(args)
+    return 0
+
+
+# endregion Main
 
 if __name__ == "__main__":
     raise SystemExit(main())
