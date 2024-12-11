@@ -118,7 +118,7 @@ wheels = [
 
 [[package]]
 name = "scriptmerge"
-version = "2.1.1"
+version = "3.0.1"
 source = { editable = "." }
 
 [package.dev-dependencies]

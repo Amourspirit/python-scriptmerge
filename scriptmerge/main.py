@@ -28,6 +28,12 @@ def _args_compile_pyz(parser: argparse.ArgumentParser) -> None:
 
 def _args_compile_py(parser: argparse.ArgumentParser) -> None:
     _parse_args_common(parser)
+    parser.add_argument(
+        "-i",
+        "--init-py",
+        action="store_true",
+        help="Include '__init__.py' file in the output. Default is False.",
+    )
 
 
 def _args_compile_original(parser: argparse.ArgumentParser) -> None:
@@ -137,6 +143,7 @@ def _args_compile_py_action(args: argparse.Namespace) -> int:
         copy_shebang=args.copy_shebang,
         exclude_python_modules=args.exclude_python_module,
         clean=args.clean,
+        include_init_py=args.init_py,
     )
     with open(args.output_file, "w") as output_file:
         output_file.write(output)

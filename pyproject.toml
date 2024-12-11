@@ -41,7 +41,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
-Documentation = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
+Documentation = "https://github.com/Amourspirit/python-scriptmerge/wiki"
 Repository = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge"
 Issues = "https://github.com/Amourspirit/python-scriptmerge/tree/scriptmerge/issues"
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, Callable, List
+import os
 
 __version__ = "3.0.1"
 
@@ -10,13 +11,16 @@ from scriptmerge.merge_common import CancelEventArgs as CancelEventArgs
 from scriptmerge import merge_py as merge_py
 from scriptmerge import merge_pyz as merge_pyz
 
+# set a flag to indicate that we are running in the scriptmerge context
+os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
+
 # region Constants for Callbacks
 CALLBACK_GENERATED_SHEBANG = mc.CALLBACK_GENERATED_SHEBANG
 CALLBACK_GENERATING_FOR_MODULE = mc.CALLBACK_GENERATING_FOR_MODULE
 CALLBACK_GENERATING_FOR_FILE = mc.CALLBACK_GENERATING_FOR_FILE
 CALLBACK_GENERATED_PYTHON_PATHS = mc.CALLBACK_GENERATED_PYTHON_PATHS
+CALLBACK_GENERATING_INIT_PY_FILE = mc.CALLBACK_GENERATING_INIT_PY_FILE
 CALLBACK_GENERATING_PRELUDE = merge_py.CALLBACK_GENERATING_PRELUDE
-CALLBACK_GENERATING_INIT_PY_FILE = merge_pyz.CALLBACK_GENERATING_INIT_PY_FILE
 CALLBACK_GENERATING_MAIN_PY_FILE = merge_pyz.CALLBACK_GENERATING_MAIN_PY_FILE
 CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = (
     merge_pyz.CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT

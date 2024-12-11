@@ -9,18 +9,14 @@ import io
 import zipapp
 import tempfile
 import shutil
-
+from pathlib import Path
 from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
 from scriptmerge.merge_common import EventArgs, CancelEventArgs
 
-CALLBACK_GENERATING_INIT_PY_FILE = "GENERATING_INIT_PY_FILE"
+
 CALLBACK_GENERATING_MAIN_PY_FILE = "GENERATING_MAIN_PY_FILE"
 CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = "GENERATED_MAIN_PY_FILE_CONTENT"
-
-
-# set a flag to indicate that we are running in the scriptmerge context
-os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
 
 # _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
@@ -157,17 +153,20 @@ def script(
             contents = ev_args.event_data.get("contents", build_contents)
             if contents != build_contents:
                 with open(
-                    os.path.join(archive_dir, "__main__.py"), "w", encoding="utf-8"
+                    os.path.join(archive_dir, "__main__.py"),
+                    "w",
+                    encoding="utf-8",
+                    newline="\n",
                 ) as f:
                     f.write(contents)
 
         init_file_path = os.path.join(archive_dir, "__init__.py")
         contents = ""
-        with open(init_file_path, "w", encoding="utf-8") as f:
+        with open(init_file_path, "w", encoding="utf-8", newline="\n") as f:
             if callback is not None:
                 # This event give a chance to modify the contents of the __init__.py file.
                 ev_args = EventArgs(
-                    name=CALLBACK_GENERATING_INIT_PY_FILE,
+                    name=merge_common.CALLBACK_GENERATING_INIT_PY_FILE,
                     source="script",
                 )
                 event_data = {
@@ -196,7 +195,9 @@ def script(
                 with _open_source_file(module.absolute_path) as f:
                     source = f.read()
                 source = merge_common.remove_comments_and_doc_strings(source)
-                with open(archive_module_path, "w", encoding="utf-8") as f:
+                with open(
+                    archive_module_path, "w", encoding="utf-8", newline="\n"
+                ) as f:
                     f.write(source)
             else:
                 shutil.copyfile(module.absolute_path, archive_module_path)
@@ -212,14 +213,26 @@ def script(
 
 
 def make_package(archive_dir, module: ImportTarget):
-    parts = os.path.dirname(module.relative_path).split("/")
-    partial_path = archive_dir
+    """
+    Creates a package structure in the specified archive directory based on the 
+    relative path of the given module. It ensures that each directory in the path 
+    contains an __init__.py file to make it a package.
+    Args:
+        archive_dir (str or Path): The root directory where the package structure 
+            will be created.
+        module (ImportTarget): An object representing the module to be packaged, 
+            which includes its relative path.
+    Raises:
+        OSError: If there is an error creating directories or writing files.
+    """
+    
+    parts = Path(module.relative_path).parent.parts
+    partial_path = Path(archive_dir)
     for part in parts:
-        partial_path = os.path.join(partial_path, part)
-        if not os.path.exists(partial_path):
-            os.mkdir(partial_path)
-            with open(os.path.join(partial_path, "__init__.py"), "wb") as f:
-                f.write(b"\n")
+        partial_path /= part
+        if not partial_path.exists():
+            partial_path.mkdir()
+            (partial_path / "__init__.py").write_bytes(b"\n")
 
 
 def _read_sys_path_from_python_bin(binary_path: str):

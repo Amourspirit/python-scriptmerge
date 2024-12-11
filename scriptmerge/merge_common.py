@@ -12,6 +12,7 @@ CALLBACK_GENERATED_SHEBANG = "GENERATED_SHEBANG"
 CALLBACK_GENERATING_FOR_MODULE = "GENERATING_FOR_MODULE"
 CALLBACK_GENERATING_FOR_FILE = "GENERATING_FOR_FILE"
 CALLBACK_GENERATED_PYTHON_PATHS = "GENERATED_PYTHON_PATHS"
+CALLBACK_GENERATING_INIT_PY_FILE = "GENERATING_INIT_PY_FILE"
 
 
 def remove_comments_and_doc_strings(source: str) -> str:
@@ -110,7 +111,7 @@ def write_str_file(file_path: str | Path, content: str) -> None:
     """
     Writes content to a file.
     """
-    with open(file_path, "w", encoding="utf-8") as f:
+    with open(file_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(content)
 
 
@@ -200,14 +201,16 @@ def temp_file_manager(content: str, manual_file_name: str = ""):
     if manual_file_name:
         parent_dir = Path(tempfile.mkdtemp())
         file_name = parent_dir / manual_file_name
-        with open(file_name, "w", encoding="utf-8") as f:
+        with open(file_name, "w", encoding="utf-8", newline="\n") as f:
             f.write(content)
         try:
             yield str(file_name)
         finally:
             shutil.rmtree(parent_dir)
     else:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, encoding="utf-8", newline="\n"
+        ) as temp_file:
             temp_file.write(content.encode())
             temp_file_name = temp_file.name
         try:
