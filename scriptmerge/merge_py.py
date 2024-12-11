@@ -5,17 +5,12 @@ import os
 import os.path
 import subprocess
 import re
-import tempfile
 
 from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
 from scriptmerge.merge_common import EventArgs, CancelEventArgs
 
 CALLBACK_GENERATING_PRELUDE = "GENERATING_PRELUDE"
-
-
-# set a flag to indicate that we are running in the scriptmerge context
-os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
 
 # _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")

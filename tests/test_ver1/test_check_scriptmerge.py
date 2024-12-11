@@ -171,7 +171,7 @@ def test_can_explicitly_set_python_interpreter(
     run_shell_cmd(["virtualenv", venv_path])
     site_packages_path = find_site_packages(venv_path)
     path_path = os.path.join(site_packages_path, "greetings.pth")
-    with open(path_path, "w") as path_file:
+    with open(path_path, "w", encoding="utf-8", newline="\n") as path_file:
         path_file.write(find_script("python_path_from_binary/packages\n"))
 
     chk_script_output(
@@ -197,10 +197,8 @@ def test_python_environment_variables_are_ignored_when_explicitly_setting_python
     bad_python_path = os.path.join(venv_path, "pythonpath")
     bad_import_path = os.path.join(bad_python_path, "greetings/greeting.py")
     os.makedirs(os.path.dirname(bad_import_path))
-    with open(bad_import_path, "w") as bad_import_path:
-        pass
 
-    with open(path_path, "w") as path_file:
+    with open(path_path, "w", encoding="utf-8", newline="\n") as path_file:
         path_file.write(find_script("python_path_from_binary/packages\n"))
 
     original_python_path = os.environ.get("PYTHONPATH")

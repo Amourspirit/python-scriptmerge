@@ -68,9 +68,11 @@ def write_file_tmp(tmp_path):
         file_path = tmp_path / file_name
         if isinstance(contents, bytes):
             mode = "wb"
+            nl = None
         else:
             mode = "w"
-        with open(file_path, mode) as file:
+            nl = "\n"
+        with open(file_path, mode, newline=nl) as file:
             file.write(contents)
         return str(file_path)
 

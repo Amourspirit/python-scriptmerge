@@ -13,7 +13,7 @@ def temporary_script(tmp_path_factory: pytest.TempPathFactory):
     fn = tmp_path_factory.mktemp("script_dir") / "script"
 
     def _temporary_script(contents):
-        with open(fn, "w") as script_file:
+        with open(fn, "w", encoding="utf-8", newline="\n") as script_file:
             script_file.write(contents)
 
         st = os.stat(fn)

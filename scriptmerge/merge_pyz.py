@@ -19,10 +19,6 @@ CALLBACK_GENERATING_MAIN_PY_FILE = "GENERATING_MAIN_PY_FILE"
 CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = "GENERATED_MAIN_PY_FILE_CONTENT"
 
 
-# set a flag to indicate that we are running in the scriptmerge context
-os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
-
-
 # _RE_CODING =  re.compile(r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
 # https://peps.python.org/pep-0263/
 
@@ -157,13 +153,16 @@ def script(
             contents = ev_args.event_data.get("contents", build_contents)
             if contents != build_contents:
                 with open(
-                    os.path.join(archive_dir, "__main__.py"), "w", encoding="utf-8"
+                    os.path.join(archive_dir, "__main__.py"),
+                    "w",
+                    encoding="utf-8",
+                    newline="\n",
                 ) as f:
                     f.write(contents)
 
         init_file_path = os.path.join(archive_dir, "__init__.py")
         contents = ""
-        with open(init_file_path, "w", encoding="utf-8") as f:
+        with open(init_file_path, "w", encoding="utf-8", newline="\n") as f:
             if callback is not None:
                 # This event give a chance to modify the contents of the __init__.py file.
                 ev_args = EventArgs(
@@ -196,7 +195,9 @@ def script(
                 with _open_source_file(module.absolute_path) as f:
                     source = f.read()
                 source = merge_common.remove_comments_and_doc_strings(source)
-                with open(archive_module_path, "w", encoding="utf-8") as f:
+                with open(
+                    archive_module_path, "w", encoding="utf-8", newline="\n"
+                ) as f:
                     f.write(source)
             else:
                 shutil.copyfile(module.absolute_path, archive_module_path)

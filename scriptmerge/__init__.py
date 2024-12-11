@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, Callable, List
+import os
 
 __version__ = "3.0.1"
 
@@ -9,6 +10,9 @@ from scriptmerge.merge_common import EventArgs as EventArgs
 from scriptmerge.merge_common import CancelEventArgs as CancelEventArgs
 from scriptmerge import merge_py as merge_py
 from scriptmerge import merge_pyz as merge_pyz
+
+# set a flag to indicate that we are running in the scriptmerge context
+os.environ["SCRIPT_MERGE_ENVIRONMENT"] = "1"
 
 # region Constants for Callbacks
 CALLBACK_GENERATED_SHEBANG = mc.CALLBACK_GENERATED_SHEBANG

@@ -112,7 +112,7 @@ def get_script_str_from_pyz():
                 zip_ref.extractall(extract_to)
 
         def read_python_script(file_path: str) -> str:
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 multi_line_string = f.read()
             single_line_string = multi_line_string.replace("\n", "\\n").replace(
                 "\t", "\\t"
