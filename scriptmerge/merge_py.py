@@ -5,6 +5,7 @@ import os
 import os.path
 import subprocess
 import re
+from pathlib import Path
 
 from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
@@ -496,7 +497,8 @@ class ScriptMergeItem:
             return file.read()
 
     def get_build_item(self):
-        module_rel_path = self.absolute_path.split("/")[-1]
+        abs_path = Path(self.absolute_path)
+        module_rel_path = abs_path.name
         module_name = module_rel_path.replace(".py", "")
         return {module_name: (module_rel_path, self._read_binary())}
 

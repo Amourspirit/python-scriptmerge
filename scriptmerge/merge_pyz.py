@@ -9,7 +9,7 @@ import io
 import zipapp
 import tempfile
 import shutil
-
+from pathlib import Path
 from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
 from scriptmerge.merge_common import EventArgs, CancelEventArgs
@@ -213,14 +213,26 @@ def script(
 
 
 def make_package(archive_dir, module: ImportTarget):
-    parts = os.path.dirname(module.relative_path).split("/")
-    partial_path = archive_dir
+    """
+    Creates a package structure in the specified archive directory based on the 
+    relative path of the given module. It ensures that each directory in the path 
+    contains an __init__.py file to make it a package.
+    Args:
+        archive_dir (str or Path): The root directory where the package structure 
+            will be created.
+        module (ImportTarget): An object representing the module to be packaged, 
+            which includes its relative path.
+    Raises:
+        OSError: If there is an error creating directories or writing files.
+    """
+    
+    parts = Path(module.relative_path).parent.parts
+    partial_path = Path(archive_dir)
     for part in parts:
-        partial_path = os.path.join(partial_path, part)
-        if not os.path.exists(partial_path):
-            os.mkdir(partial_path)
-            with open(os.path.join(partial_path, "__init__.py"), "wb") as f:
-                f.write(b"\n")
+        partial_path /= part
+        if not partial_path.exists():
+            partial_path.mkdir()
+            (partial_path / "__init__.py").write_bytes(b"\n")
 
 
 def _read_sys_path_from_python_bin(binary_path: str):

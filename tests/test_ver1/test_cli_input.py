@@ -96,4 +96,4 @@ def test_cli_init_py(find_script, tmp_path):
 
     with open(temp_file, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "__scriptmerge_write_module('__init__.py', b''" in content
+    assert "__scriptmerge_write_module('__init__.py', b'')" in content
