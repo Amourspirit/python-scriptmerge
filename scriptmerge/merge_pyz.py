@@ -14,7 +14,7 @@ from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
 from scriptmerge.merge_common import EventArgs, CancelEventArgs
 
-CALLBACK_GENERATING_INIT_PY_FILE = "GENERATING_INIT_PY_FILE"
+
 CALLBACK_GENERATING_MAIN_PY_FILE = "GENERATING_MAIN_PY_FILE"
 CALLBACK_GENERATED_MAIN_PY_FILE_CONTENT = "GENERATED_MAIN_PY_FILE_CONTENT"
 
@@ -167,7 +167,7 @@ def script(
             if callback is not None:
                 # This event give a chance to modify the contents of the __init__.py file.
                 ev_args = EventArgs(
-                    name=CALLBACK_GENERATING_INIT_PY_FILE,
+                    name=merge_common.CALLBACK_GENERATING_INIT_PY_FILE,
                     source="script",
                 )
                 event_data = {

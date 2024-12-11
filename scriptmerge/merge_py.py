@@ -5,7 +5,7 @@ import os
 import os.path
 import subprocess
 import re
-from pathlib import Path
+import tempfile
 
 from scriptmerge.stdlib import is_stdlib_module
 import scriptmerge.merge_common as merge_common
@@ -47,6 +47,7 @@ def script(
             Such as ["__init__", "greetings*"]
         clean (bool, optional): Specifies if the source code should be cleaned.
         callback (Callable[[Any, EventArgs], None], optional): Callback function.
+        include_init_py (bool, optional): Include ``__init__.py`` file. Defaults to False.
         **kwargs (Any): Additional arguments.
     Returns:
         str: Python modules compiled into single file contents.
@@ -60,6 +61,7 @@ def script(
     if exclude_python_modules is None:
         exclude_python_modules = []
 
+    include_init_py = bool(kwargs.get("include_init_py", False))
     _exclude_python_modules = set(exclude_python_modules)
 
     python_paths = (
@@ -125,10 +127,41 @@ def script(
         if cancel_args.cancel:
             prelude = ""
         else:
-            prelude = cancel_args.event_data.get("prelude", prelude)
+            prelude: str = cancel_args.event_data.get("prelude", prelude)
+            if prelude and not prelude.endswith("\n"):
+                prelude += "\n"
 
     if prelude:
         output.append(prelude)
+
+    if include_init_py:
+        content = ""
+        canceled = False
+        if callback is not None:
+            cancel_args = CancelEventArgs(
+                name=merge_common.CALLBACK_GENERATING_INIT_PY_FILE, source="script"
+            )
+            event_data = {
+                "content": content,
+                "clean": clean,
+            }
+            cancel_args.event_data = event_data
+            callback("script", cancel_args)
+            canceled = cancel_args.cancel
+            if not canceled:
+                content: str = cancel_args.event_data.get("content", content)
+                if content and not content.endswith("\n"):
+                    content += "\n"
+
+        if not canceled:
+            with merge_common.temp_file_manager(
+                content=content, manual_file_name="__init__.py"
+            ) as init_py_name:
+                merge_item = ScriptMergeItem(init_py_name, clean)
+                mod_gen = ModuleWriterGenerator(
+                    sys_path=python_paths, clean=clean, callback=callback
+                )
+                output.append(mod_gen.build_script_merge_items(merge_item))
 
     output.append(
         _generate_module_writers(
@@ -140,6 +173,7 @@ def script(
             callback=callback,
         )
     )
+
     # The script will be written directly to the output.
     source_contents = merge_common.read_str_file(path)
     shebang_cleaned = merge_common.remove_shebang(source_contents)
@@ -185,7 +219,7 @@ def _prelude():
 
 def _generate_module_writers(
     path: str,
-    sys_path: str,
+    sys_path: List[str],
     add_python_modules: List[str],
     exclude_python_modules: Set[str],
     clean: bool,
@@ -200,11 +234,11 @@ def _generate_module_writers(
     return generator.build()
 
 
-class ModuleWriterGenerator(object):
+class ModuleWriterGenerator:
 
     def __init__(
         self,
-        sys_path: str,
+        sys_path: List[str],
         clean: bool,
         callback: Callable[[Any, EventArgs], None] | None = None,
     ):
@@ -223,7 +257,7 @@ class ModuleWriterGenerator(object):
             )
         return "".join(output)
 
-    def build_script_merge_items(self, item: ScriptMergeItem):
+    def build_script_merge_items(self, item: ScriptMergeItem) -> str:
         mods = self._modules.copy()
         self._modules = item.get_build_item()
         output = self.build()
